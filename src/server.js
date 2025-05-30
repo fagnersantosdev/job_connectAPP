@@ -5,10 +5,13 @@ import express from 'express'
 import { PI , isNomeCompleto } from './shared/util.js'
 //importação de arquivos json
 import config from './database/conf.json' with {type:'json'}
+import prestadoresRoutes from './routes/prestadores.routes.js';
+import clientesRoutes from './routes/clientes.routes.js';
 
 //importando rotas
 import basic from './routes/basicRouters.js'
 import userRouters from './routes/usuarioRouters.js'
+
 
 
 const port = process.env.PORT 
@@ -19,6 +22,8 @@ const app = express()
 app.use(express.json()) //para converter o corpo das requisiçoes em json
 app.use(basic)
 app.use(userRouters)
+app.use('/prestadores', prestadoresRoutes);
+app.use('/clientes', clientesRoutes);
 
 
 
