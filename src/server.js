@@ -4,7 +4,7 @@ import express from 'express'
 //importação com "export"
 import { PI , isNomeCompleto } from './shared/util.js'
 //importação de arquivos json
-import config from './database/conf.json' with {type:'json'}
+import config from '../database/conf.json' with {type:'json'}
 import prestadoresRoutes from './routes/prestadores.routes.js';
 import clientesRoutes from './routes/clientes.routes.js';
 
