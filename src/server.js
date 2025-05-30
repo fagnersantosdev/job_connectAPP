@@ -1,6 +1,6 @@
 import express from 'express'
 //importação "export default"
-import user from './database/usuarios.js'
+//import user from './database/usuarios.js'
 //importação com "export"
 import { PI , isNomeCompleto } from './shared/util.js'
 //importação de arquivos json
