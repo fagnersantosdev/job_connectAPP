@@ -1,18 +1,14 @@
 import express, { Router } from 'express'
 import conexao from '../database/conexao.js'
+import PrestadorController from '../controllers/PrestadorController.js';
 
 const router = express.Router();
 
 //GET listar  todos os prestdores
-router.get('/', (req, res) =>{
-    conexao.query('select * from prestadores', (err, results) =>{
-        if (err) return res.status(500).json(err);
-        res.json(results);
-    });
-});
+router.get('/prestadores', PrestadorController.getPrestadores);
 
 //POST  cadastrar novo prestador
-router.post('/', (req, res) =>{
+router.post('/prestador/novo', (req, res) =>{
    const {nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao} =req.body;
 
    conexao.query(
