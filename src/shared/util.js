@@ -14,6 +14,15 @@ export function isEmail(email){
     return ok==-1?false:true
 }
 
+export function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result.split(',')[1]); // Remove o prefixo "data:*/*;base64,"
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 const objeto = {objeto:"qualquer"}
 
 export default objeto

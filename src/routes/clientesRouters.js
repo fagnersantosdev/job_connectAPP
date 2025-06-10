@@ -6,7 +6,9 @@ import clientesController from '../controllers/clientesControllers.js';
 const router = express.Router();
 
 // GET - Listar todos os clientes
-router.get('/clientes', clientesControllers.getClientes);
+router.get('/todos', clientesController.getAllClientes);
+router.get('/id/:id', clientesController.getClienteById);
+router.get('/foto/:id', clientesController.getFotoById);
 
 // POST - Cadastrar novo cliente
 router.post('/', (req, res) => {

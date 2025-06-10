@@ -1,8 +1,8 @@
 import prestadoresRepository from "../repositories/prestadoresRepository.js"
-import { isEmail } from "../shared/util.js"
+import { blobToBase64, isEmail } from "../shared/util.js";
 
 const prestadoresController = {
-    getUser : async (req,res)=>{
+    getPrestadores : async (req,res)=>{
         const id = req.params.id
         const user = await prestadoresRepository.getById(id)
         console.log(user)
@@ -16,7 +16,7 @@ const prestadoresController = {
             })
         }
     },
-    getUserByName : async (req,res)=>{
+    getPrestadoresByName : async (req,res)=>{
         const nome = req.params.nome
         const user = await prestadoresRepository.getByName(nome)
         if(user){
@@ -30,7 +30,7 @@ const prestadoresController = {
         }
     },
 
-    getAllUser : async (req, res) =>{
+    getAllPrestadores : async (req, res) =>{
         const users = await prestadoresRepository.getAll()
         if(users){
             res.status(200).json(users)
@@ -43,7 +43,7 @@ const prestadoresController = {
         }
     },
 
-    createUser : async (req,res) =>{
+    createPrestadores : async (req,res) =>{
         const {nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone} = req.body
         //validar
         const erros = []
@@ -68,8 +68,11 @@ const prestadoresController = {
         if (!telefone || !/^\d{10,11}$/.test(telefone)) {
         erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
         }
-
-       
+        // Foto
+              if (!foto || !foto.buffer) {
+            erros.push("Foto não enviada ou inválida. Envie uma imagem no formato correto."); 
+              
+        }
 
         if(erros.length>0){
             return res.status(400).json({
@@ -87,7 +90,7 @@ const prestadoresController = {
             cep: cep,
             complemento: complemento,
             numero: numero,
-            foto: foto,
+            foto: foto ? foto.buffer : null,
             telefone: telefone
             
         }
@@ -139,7 +142,24 @@ const prestadoresController = {
         const id = req.params.id
         const resp = await prestadoresRepository.delete(id)
         res.status(200).json(resp)
-    }
+    },
+
+    getFotoById: async (req, res) => {
+        const id = req.params.id;
+        const user = await clientesRepository.getById(id);
+        console.log(user);
+        if (user) {
+            //converte a foto blob em base64
+            const b46 = btoa(String.fromCharCode.apply(null, user[0].foto));
+            res.status(200).send(`<h1>imagem</h1><img src="data:image/png;base64,${b46}">`);
+        } else {
+            res.status(400).json({
+                status: 400,
+                ok: false,
+                message: "Cliente não encontrado"
+            });
+        }
+    },
 }
 
 export default prestadoresController;
