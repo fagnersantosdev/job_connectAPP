@@ -1,5 +1,5 @@
 import { Router } from "express";
-import user from '../database/usuarios.js'
+//import user from '../database/usuarios.js'
 import config from '../database/conf.json' with {type:'json'}
 
 

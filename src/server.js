@@ -9,13 +9,12 @@ import prestadoresRoutes from './routes/prestadoresRouters.js';
 import clientesRoutes from './routes/clientesRouters.js';
 
 //importando rotas
-//import basic from './routes/basicRouters.js'
+import basic from './routes/basicRouters.js'
 //import userRouters from './routes/usuarioRouters.js'
 
 
-
-const port = process.env.PORT 
-const host = process.env.HOST 
+const port = process.env.PORT || 3000;
+const host = process.env.HOST || 'localhost';
 const app = express()
 
 //usar as rotas
@@ -24,6 +23,7 @@ app.use(express.json()) //para converter o corpo das requisiçoes em json
 //app.use(userRouters)
 app.use('/prestadores', prestadoresRoutes);
 app.use('/clientes', clientesRoutes);
+app.use('/', basic);
 
 
 

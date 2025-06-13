@@ -6,9 +6,32 @@ import clientesController from '../controllers/clientesControllers.js';
 const router = express.Router();
 
 // GET - Listar todos os clientes
-router.get('/todos', clientesController.getAllClientes);
+//router.get('/todos', clientesController.getAllClientes);
+//router.get('/id/:id', clientesController.getClienteById);
+//router.get('/foto/:id', clientesController.getFotoById);
+
+//GET listar  todos os clientes
+// GET - Todos os clientes
+router.get('/', clientesController.getAllClientes);
+
+// GET - Buscar por ID
 router.get('/id/:id', clientesController.getClienteById);
+
+// GET - Buscar por nome
+router.get('/nome/:nome', clientesController.getClientesByName);
+
+// GET - Buscar foto
 router.get('/foto/:id', clientesController.getFotoById);
+
+// POST - Cadastrar novo cliente (usando o controller)
+router.post('/', clientesController.createClientes);
+
+// PUT - Atualizar
+router.put('/', clientesController.updateClientes);
+
+// DELETE - Excluir
+router.delete('/:id', clientesController.deleteClientes);
+
 
 // POST - Cadastrar novo cliente
 router.post('/', (req, res) => {
