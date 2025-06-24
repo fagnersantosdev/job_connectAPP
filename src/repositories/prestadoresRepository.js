@@ -2,7 +2,7 @@ import conexao from "../database/conexao.js";
 
 const prestadoresRepository ={
     getAll : async ()=>{
-        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raio_atuacao from prestadores;'
+        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from prestadores;'
         const list = await conexao.promise().query(sql).catch(erro=>{
             return [
                 {
@@ -17,7 +17,7 @@ const prestadoresRepository ={
     },
 
     getById : async (id) =>{
-        const sql = `select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raio-atuacao from prestadores where id=?;`
+        const sql = `select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from prestadores where id=?;`
         const list = await conexao.promise().execute(sql,[id]).catch(erro=>{
             return [
                 {
@@ -31,7 +31,7 @@ const prestadoresRepository ={
         return list[0]
     },
     getByName : async (nome) =>{
-        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raio-atuacao from prestadores where nome like ?;'
+        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from prestadores where nome like ?;'
         const list = await conexao.promise().execute(sql,['%'+nome+'%']).catch(erro=>{
             return [
                 {
@@ -45,7 +45,7 @@ const prestadoresRepository ={
         return list[0]
     },
     get : async (email,senha) =>{
-        const sql = "select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raio_atuacao from prestadores where email=? and senha = md5(?);"
+        const sql = "select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from prestadores where email=? and senha = md5(?);"
         const list = await conexao.promise().execute(sql,[email, senha]).catch(erro=>{
             return [
                 {
@@ -60,7 +60,7 @@ const prestadoresRepository ={
     },
 
     create : async (obj) =>{
-        const sql = "insert into prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raio_atuacao) values (?,?,?,md5(?),?,?,?,?,?,?);"
+        const sql = "insert into prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao) values (?,?,?,md5(?),?,?,?,?,?,?);"
         const list = await conexao.promise().execute(sql,[obj.nome,obj.email,obj.senha,obj.cep,obj.complemento,obj.numero,obj.foto,obj.raioAtuacao]).catch(erro=>{
             return [
                 {
@@ -75,7 +75,7 @@ const prestadoresRepository ={
 
     } ,
     update : async (id, obj)=>{
-        const sql = "UPDATE prestadores set nome=?,email=?,senha=md5(?), telefone=?, cep=?, c omplemento=?, numero=?, foto=?, raio_atuacao=? where id=?;"
+        const sql = "UPDATE prestadores set nome=?,email=?,senha=md5(?), telefone=?, cep=?, c omplemento=?, numero=?, foto=?, raioAtuacao=? where id=?;"
         const list = await conexao.promise().execute(sql,
             [
                 obj.nome, 
@@ -86,7 +86,7 @@ const prestadoresRepository ={
                 obj.complemento,
                 obj.numero,
                 obj.foto,
-                obj.raio_atuacao,
+                obj.raioAtuacao,
                 id
             ]).catch(erro=>{
             return [

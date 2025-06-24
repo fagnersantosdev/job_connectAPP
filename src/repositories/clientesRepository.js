@@ -31,7 +31,7 @@ const clientesRepository ={
         return list[0]
     },
     getByName : async (nome) =>{
-        const sql = 'select nome from clientes where nome like ?;'
+        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto from clientes where nome like ?;'
         const list = await conexao.promise().execute(sql,['%'+nome+'%']).catch(erro=>{
             return [
                 {

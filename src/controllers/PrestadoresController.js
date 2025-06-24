@@ -44,7 +44,7 @@ const prestadoresController = {
     },
 
     createPrestadores : async (req,res) =>{
-        const {nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone} = req.body
+        const {nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone} = req.body
         //validar
         const erros = []
         if(nome.length<3 || nome.length>30){
@@ -91,6 +91,7 @@ const prestadoresController = {
             complemento: complemento,
             numero: numero,
             foto: foto ? foto.buffer : null,
+            raioAtuacao: raioAtuacao,
             telefone: telefone
             
         }
@@ -98,7 +99,7 @@ const prestadoresController = {
         res.status(200).json(resp)
     },
     updateUser: async (req,res)=>{
-        const {id, nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body
+        const {id, nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone } = req.body
         //validar
         const erros = []
         if(nome.length<3 || nome.length>30){
@@ -132,6 +133,7 @@ const prestadoresController = {
             complemento: complemento,
             numero: numero,
             foto: foto,
+            raioAtuacao: raioAtuacao,
             telefone: telefone,
             
         }
