@@ -2,7 +2,7 @@ import conexao from "../database/conexao.js";
 
 const prestadoresRepository ={
     getAll : async ()=>{
-        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from * prestadores;'
+        const sql = 'select id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao from prestadores;'
         const list = await conexao.promise().query(sql).catch(erro=>{
             return [
                 {
