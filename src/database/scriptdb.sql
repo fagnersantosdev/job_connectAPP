@@ -1,29 +1,26 @@
 -- CRIAR BANCO
 
-create database connect;
-USE connect;
-
-create table clientes(
-id int auto_increment primary key,
-nome varchar(100) not null,
-cpf_cnpj varchar(14) not null unique,
-email varchar(100) not null unique,
-senha varchar(255) not null,
-cep char(8) not null,
-complemento varchar(10),
-numero int(10),
-foto mediumblob
+CREATE TABLE clientes (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  cpf_cnpj CHAR(14) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  senha VARCHAR(255) NOT NULL,
+  cep CHAR(8) NOT NULL,
+  complemento VARCHAR(10),
+  numero INTEGER,
+  foto BYTEA
 );
 
-create table prestadores(
-id int auto_increment primary key,
-nome varchar(100) not null,
-cpf_cnpj varchar(14) not null unique,
-email varchar(100) not null unique,
-senha varchar(255) not null,
-cep char(8) not null,
-complemento varchar(10),
-numero int(10),
-foto mediumblob,
-raioAtuacao float not null
+CREATE TABLE prestadores (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  cpf_cnpj CHAR(14) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  senha VARCHAR(255) NOT NULL,
+  cep CHAR(8) NOT NULL,
+  complemento VARCHAR(10),
+  numero INTEGER,
+  foto BYTEA,
+  raio_atuacao REAL NOT NULL
 );

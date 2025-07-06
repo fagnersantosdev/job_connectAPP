@@ -1,13 +1,20 @@
-import { createConnection } from "mysql2";
+const { Pool } = require('pg-promise'); // Importa o Pool do pacote 'pg'
 
-const conexao = createConnection(
-    {
-        user: 'root',
-        password: '',
-        host:'localhost',
-        port: 3307,
-        database: 'connect'
-    }
-)
+const pool = new Pool({
+  user: 'seu_usuario_postgresql',
+  host: 'localhost', // Ou o IP/hostname do seu servidor PostgreSQL
+  database: 'seu_banco_de_dados_postgresql',
+  password: 'sua_senha_postgresql',
+  port: 5432, // Porta padrão do PostgreSQL. Altere se for diferente.
+});
 
-export default conexao
+// Testar a conexão (opcional, mas boa prática)
+pool.on('connect', () => {
+  console.log('Conectado ao PostgreSQL!');
+});
+
+pool.on('error', (err) => {
+  console.error('Erro na conexão com o PostgreSQL:', err);
+});
+
+module.exports = pool; // Exporte o Pool diretamente. Ele já retorna Promises!
