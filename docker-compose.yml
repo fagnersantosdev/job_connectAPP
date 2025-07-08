@@ -1,0 +1,21 @@
+#version: '3.8' # Versão da sintaxe do Docker Compose
+
+services:
+  db:
+    image: postgres:14 # Imagem oficial do PostgreSQL. Você pode escolher a versão (ex: 15, 16)
+    container_name: jobconnect_postgres_db # Nome amigável para o seu contêiner
+    restart: always # Reinicia o contêiner automaticamente se ele parar
+    environment: # Variáveis de ambiente para configurar o PostgreSQL
+      POSTGRES_DB: jobconnect_db # Nome do seu banco de dados
+      POSTGRES_USER: seu_usuario # Usuário do banco de dados (o mesmo que você usa no Node.js)
+      POSTGRES_PASSWORD: sua_senha # Senha do banco de dados (o mesmo que você usa no Node.js)
+    ports:
+      - "5432:5432" # Mapeia a porta 5432 do seu host para a porta 5432 do contêiner
+    volumes:
+      - db_data:/var/lib/postgresql/data # Volume persistente para os dados do banco.
+                                          # Isso garante que seus dados não serão perdidos se o contêiner for removido.
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Opcional: Para executar um script SQL na primeira inicialização
+                                                          # Use isso para criar tabelas, usuários, etc.
+
+volumes:
+  db_data: # Define o volume nomeado para persistência de dados
