@@ -4,7 +4,7 @@ const pool = new Pool({
   user: 'seu_usuario_postgresql',
   host: 'localhost', // Ou o IP/hostname do seu servidor PostgreSQL
   database: 'seu_banco_de_dados_postgresql',
-  password: 'sua_senha_postgresql',
+  password: 'postegrenet',
   port: 5432, // Porta padrão do PostgreSQL. Altere se for diferente.
 });
 

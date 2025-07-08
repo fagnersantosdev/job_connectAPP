@@ -9,7 +9,8 @@ CREATE TABLE clientes (
   cep CHAR(8) NOT NULL,
   complemento VARCHAR(10),
   numero INTEGER,
-  foto BYTEA
+  foto BYTEA,
+  telefone VARCHAR(20) NOT NULL
 );
 
 CREATE TABLE prestadores (
@@ -23,4 +24,5 @@ CREATE TABLE prestadores (
   numero INTEGER,
   foto BYTEA,
   raio_atuacao REAL NOT NULL
+  telefone VARCHAR(20) NOT NULL
 );

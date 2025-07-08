@@ -81,44 +81,34 @@ const prestadoresRepository = {
         }
     },
 
-    // --- Obter Prestador por Email e Senha ---
-    get: async (email, senha) => {
-        // Se você está usando MD5 para senha, faça o hash ANTES de enviar para o banco.
-        // O PostgreSQL não tem MD5() nativo embutido como o MySQL para usar diretamente na query,
-        // a menos que você instale uma extensão ou crie uma função.
-        // É ALTAMENTE RECOMENDADO usar bcrypt ou Argon2 para senhas.
-        // Por exemplo: const hashedPassword = bcrypt.hashSync(senha, 10);
-        // Se a senha já vem com hash MD5 do frontend, use-a diretamente.
-        // Se não, você precisará de uma biblioteca MD5 no Node.js ou garantir que o hash seja feito antes.
-        // Exemplo SIMPLIFICADO:
-        // import crypto from 'crypto';
-        // const hashedSenha = crypto.createHash('md5').update(senha).digest('hex');
-
-        const sql = "SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao FROM prestadores WHERE email=$1 AND senha = $2;";
+    // --- NOVO MÉTODO: Obter Prestador por Email para Login (apenas ID e Senha) ---
+    // Este método é usado pelo controller para obter o hash da senha para comparação com Bcrypt.
+    getByEmailForLogin: async (email) => {
+        const sql = `SELECT id, senha FROM prestadores WHERE email=$1;`;
         try {
-            // .oneOrNone() para login (espera 0 ou 1 resultado)
-            const prestador = await conexao.oneOrNone(sql, [email, senha]); // Assumindo que a 'senha' já está com hash MD5 aqui
+            // .oneOrNone() porque esperamos 0 ou 1 resultado
+            const prestador = await conexao.oneOrNone(sql, [email]);
             if (prestador) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Login bem-sucedido',
-                    data: prestador
+                    message: 'Credenciais de login obtidas com sucesso',
+                    data: prestador // Retorna { id, senha: 'hash_da_senha' }
                 };
             } else {
                 return {
-                    status: 401,
+                    status: 404, // Não encontrado
                     ok: false,
-                    message: 'Email ou senha inválidos',
+                    message: 'Prestador não encontrado pelo email',
                     data: null
                 };
             }
         } catch (error) {
-            console.error('Erro ao tentar login:', error);
+            console.error('Erro ao buscar prestador por email para login:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao tentar login',
+                message: 'Erro de servidor ao buscar prestador por email para login',
                 sqlMessage: error.message
             };
         }
@@ -126,23 +116,17 @@ const prestadoresRepository = {
 
     // --- Criar Novo Prestador ---
     create: async (obj) => {
-        // IMPORTANTE: `cpf_cnpj` não está nos parâmetros da query de insert, mas está no objeto.
-        // E `telefone` também. Verifique seu DDL e o objeto `obj`.
-        // A senha deve ser hashada ANTES de ser enviada para o banco.
-        // Vou adicionar cpf_cnpj e telefone à query baseada no seu objeto.
-        // Lembre-se de instalar e usar uma biblioteca de hash mais segura como `bcrypt`!
-        // Exemplo: const hashedPassword = bcrypt.hashSync(obj.senha, 10);
-        
+        // A senha (obj.senha) JÁ DEVE ESTAR HASHADA AQUI, vinda do controller.
         const sql = `INSERT INTO prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`; // RETURNING * para obter o registro inserido
 
         try {
             const newPrestador = await conexao.one(sql, [
                 obj.nome,
-                obj.cpf_cnpj, // Adicionado
+                obj.cpf_cnpj,
                 obj.email,
-                obj.senha, // **ATENÇÃO: Hashar antes de passar aqui!**
-                obj.telefone, // Adicionado
+                obj.senha, // Senha já hasheada pelo Bcrypt no controller
+                obj.telefone,
                 obj.cep,
                 obj.complemento,
                 obj.numero,
@@ -177,8 +161,8 @@ const prestadoresRepository = {
 
     // --- Atualizar Prestador ---
     update: async (id, obj) => {
-        // Cuidado com o espaço em 'c omplemento' no seu SQL original.
-        // Novamente, se a senha for atualizada, ela deve ser hashada ANTES.
+        // A senha (obj.senha) JÁ DEVE ESTAR HASHADA AQUI se foi modificada no controller.
+        // Se a senha não foi modificada no controller, o obj.senha terá o hash antigo.
         const sql = `UPDATE prestadores SET
                      nome=$1, email=$2, senha=$3, telefone=$4, cep=$5, complemento=$6,
                      numero=$7, foto=$8, raioAtuacao=$9
@@ -188,7 +172,7 @@ const prestadoresRepository = {
             const updatedPrestador = await conexao.oneOrNone(sql, [
                 obj.nome,
                 obj.email,
-                obj.senha, // **ATENÇÃO: Hashar antes de passar aqui se a senha está sendo atualizada!**
+                obj.senha, // Senha já hasheada (se nova) ou a antiga (se não alterada)
                 obj.telefone,
                 obj.cep,
                 obj.complemento,
@@ -215,7 +199,7 @@ const prestadoresRepository = {
             }
         } catch (error) {
             console.error('Erro ao atualizar prestador:', error);
-             if (error.code === '23505') {
+            if (error.code === '23505') {
                 return {
                     status: 409,
                     ok: false,
