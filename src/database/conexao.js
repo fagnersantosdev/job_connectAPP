@@ -1,12 +1,20 @@
-// database/conexao.js
-const pgp = require('pg-promise')();
+const { Pool } = require('pg-promise'); // Importa o Pool do pacote 'pg'
 
-const db = pgp({
-  user: 'seu_usuario', // Deve ser o mesmo de POSTGRES_USER no docker-compose.yml
-  host: 'localhost',   // Ou 'db' se o backend também estiver em um contêiner Docker
-  database: 'jobconnect_db', // Deve ser o mesmo de POSTGRES_DB no docker-compose.yml
-  password: 'sua_senha', // Deve ser o mesmo de POSTGRES_PASSWORD no docker-compose.yml
-  port: 5432, // A porta mapeada no docker-compose.yml
+const pool = new Pool({
+  user: 'seu_usuario_postgresql',
+  host: 'localhost', // Ou o IP/hostname do seu servidor PostgreSQL
+  database: 'seu_banco_de_dados_postgresql',
+  password: 'postegrenet',
+  port: 5432, // Porta padrão do PostgreSQL. Altere se for diferente.
+});
+
+// Testar a conexão (opcional, mas boa prática)
+pool.on('connect', () => {
+  console.log('Conectado ao PostgreSQL!');
+});
+
+pool.on('error', (err) => {
+  console.error('Erro na conexão com o PostgreSQL:', err);
 });
 
 module.exports = db;
