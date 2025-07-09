@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:14
+    container_name: jobconnect_postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: jobconnect_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrenet
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Opcional: Para executar um script SQL na primeira inicialização
+
+volumes:
+  db_data:
