@@ -10,4 +10,5 @@ const db = pgp({
   port: 5432,                // <-- A porta mapeada no seu docker-compose.yml (5432:5432)
 });
 
+//docker exec -it jobconnect_postgres_db psql -U postgres jobconnect_db
 module.exports = db;
