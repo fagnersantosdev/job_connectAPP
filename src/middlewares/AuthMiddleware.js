@@ -1,51 +1,49 @@
-import usuarioRepository from "../repositories/usuarioRepository.js"
+import usuarioRepository from "../repositories/usuarioRepository.js";
 
 const AuthMiddleware = {
+  authAdmin: async (req, res, next) => {
+    const { email, senha } = req.body;
 
-    authAdmin: async (req, res, next) =>{
-        const {email, senha} = req.body
-        const user = await usuarioRepository.get(email,senha)
-        if(!user){
-            res.status(200).json({
-                ok:false,
-                mensage: "email ou senha incorretos"
-            })
-        }else{
-            if(user.acesso=='admin'){
-                //liberado
-                next()
-            }else{
-                res.status(200).json({
-                ok:false,
-                mensage: "usuário não autorizado"
-            })
-            }
-            
-        }
-        
-    },
-    auth: async (req, res, next) =>{
-        const {email, senha} = req.body
-        const user = await usuarioRepository.get(email,senha)
-        if(!user){
-            res.status(200).json({
-                ok:false,
-                mensage: "email ou senha incorretos"
-            })
-        }else{
-            if(user.acesso=='user'){
-                //liberado
-                next()
-            }else{
-                res.status(200).json({
-                ok:false,
-                mensage: "usuário não autorizado"
-            })
-            }
-            
-        }
-        
+    const user = await usuarioRepository.get(email, senha);
+    if (!user) {
+      return res.status(401).json({
+        ok: false,
+        message: "Email ou senha incorretos",
+      });
     }
-}
 
-export default AuthMiddleware
+    if (user.acesso !== "admin") {
+      return res.status(403).json({
+        ok: false,
+        message: "Usuário não autorizado",
+      });
+    }
+
+    // liberado
+    next();
+  },
+
+  auth: async (req, res, next) => {
+    const { email, senha } = req.body;
+
+    const user = await usuarioRepository.get(email, senha);
+    if (!user) {
+      return res.status(401).json({
+        ok: false,
+        message: "Email ou senha incorretos",
+      });
+    }
+
+    if (user.acesso !== "user") {
+      return res.status(403).json({
+        ok: false,
+        message: "Usuário não autorizado",
+      });
+    }
+
+    // liberado
+    next();
+  },
+};
+
+export default AuthMiddleware;

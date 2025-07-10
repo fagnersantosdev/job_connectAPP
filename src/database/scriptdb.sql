@@ -23,6 +23,6 @@ CREATE TABLE prestadores (
   complemento VARCHAR(10),
   numero INTEGER,
   foto BYTEA,
-  raio_atuacao REAL NOT NULL
+  raio_atuacao REAL NOT NULL,
   telefone VARCHAR(20) NOT NULL
 );
