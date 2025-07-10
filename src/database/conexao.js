@@ -17,4 +17,5 @@ pool.on('error', (err) => {
   console.error('Erro na conexão com o PostgreSQL:', err);
 });
 
+//docker exec -it jobconnect_postgres_db psql -U postgres jobconnect_db
 module.exports = db;

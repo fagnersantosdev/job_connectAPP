@@ -1,50 +1,32 @@
 import express from 'express';
-import conexao from '../database/conexao.js';
-import clientesController from '../controllers/clientesControllers.js';
-
+import clientesControllers from '../controllers/clientesControllers.js'; // Ajustado para clientesController
 
 const router = express.Router();
 
+// --- Rotas de Clientes ---
+
 // GET - Listar todos os clientes
-//router.get('/todos', clientesController.getAllClientes);
-//router.get('/id/:id', clientesController.getClienteById);
-//router.get('/foto/:id', clientesController.getFotoById);
+router.get('/', clientesControllers.getAllClientes);
 
-//GET listar  todos os clientes
-// GET - Todos os clientes
-router.get('/', clientesController.getAllClientes);
+// GET - Buscar cliente por ID
+router.get('/id/:id', clientesControllers.getClientes); // Usando getClientes que busca por ID
 
-// GET - Buscar por ID
-router.get('/id/:id', clientesController.getClienteById);
+// GET - Buscar cliente por nome
+router.get('/nome/:nome', clientesControllers.getClientesByName);
 
-// GET - Buscar por nome
-router.get('/nome/:nome', clientesController.getClientesByName);
-
-// GET - Buscar foto
-router.get('/foto/:id', clientesController.getFotoById);
-
-// POST - Cadastrar novo cliente (usando o controller)
-router.post('/', clientesController.createClientes);
-
-// PUT - Atualizar
-router.put('/', clientesController.updateClientes);
-
-// DELETE - Excluir
-router.delete('/:id', clientesController.deleteClientes);
-
+// GET - Buscar foto do cliente por ID
+router.get('/foto/:id', clientesControllers.getFotoById);
 
 // POST - Cadastrar novo cliente
-router.post('/', (req, res) => {
-  const { nome, cpf, email, senha, cep, complemento, numero, foto } = req.body;
+router.post('/', clientesControllers.createClientes);
 
-  conexao.query(
-    'INSERT INTO clientes (nome, cpf, email, senha, cep, complemento, numero, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [nome, cpf, email, senha, cep, complemento, numero, foto],
-    (err, results) => {
-      if (err) return res.status(500).json(err);
-      res.status(201).json({ id: results.insertId, ...req.body });
-    }
-  );
-});
+// POST - Login do cliente (NOVA ROTA)
+router.post('/login', clientesControllers.loginCliente); // Adicionada rota para o novo método de login
+
+// PUT - Atualizar cliente (o ID deve vir na URL para ser mais RESTful)
+router.put('/:id', clientesControllers.updateCliente); // Ajustado para updateCliente e ID na URL
+
+// DELETE - Excluir cliente
+router.delete('/:id', clientesControllers.deleteCliente); // Ajustado para deleteCliente
 
 export default router;
