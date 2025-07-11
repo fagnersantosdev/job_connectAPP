@@ -1,14 +1,15 @@
 const ValidMiddleware = {
-    validId: (req, res, next) =>{
-        const id= req.params["id"]
-        if(isNaN(id)){
-            res.status(400).json({
-                ok:false,
-                erro: "O id do usuário deve ser um número"
-            })
-        }else{
-            next()
-        }
+  validId: (req, res, next) => {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "O ID do usuário deve ser um número",
+      });
     }
-}
-export default ValidMiddleware
+
+    next();
+  },
+};
+
+export default ValidMiddleware;
