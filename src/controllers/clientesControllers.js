@@ -1,9 +1,13 @@
 import clientesRepository from "../repositories/clientesRepository.js";
 import { isEmail } from "../shared/util.js"; // Supondo que blobToBase64 não será mais necessário aqui, ou será adaptado.
 import bcrypt from 'bcrypt'; // Importe a biblioteca bcrypt
+import jwt from 'jsonwebtoken'; // Importar jsonwebtoken
+import dotenv from 'dotenv'; // Importar dotenv
 
 // Configuração do custo do Bcrypt. 10 é um bom valor inicial.
 const saltRounds = 10;
+
+dotenv.config(); // Carregar variáveis de ambiente
 
 const clientesController = {
     // --- Obter Cliente por ID ---
@@ -203,71 +207,55 @@ const clientesController = {
     },
 
     // --- NOVO MÉTODO: Login de Cliente ---
-    // RENOMEADO: loginCliente (era loginPrestador)
+    // RENOMEADO: loginCliente 
     loginCliente: async (req, res) => {
         const { email, senha } = req.body;
 
-        // Validação básica
-        if (!email || !senha) {
-            return res.status(400).json({
-                status: 400,
-                ok: false,
-                message: "Email e senha são obrigatórios."
-            });
-        }
-
         try {
-            // 1. Buscar o cliente pelo email para obter a senha hasheada
-            const userResult = await clientesRepository.getByEmailForLogin(email);
+            const result = await clientesRepository.getByEmail(email);
 
-            if (!userResult.ok || !userResult.data) {
-                // Cliente não encontrado ou erro
-                return res.status(401).json({
-                    status: 401,
-                    ok: false,
-                    message: "Email ou senha inválidos."
-                });
+            if (!result.ok || !result.data) {
+                return res.status(401).json({ status: 401, ok: false, message: 'Credenciais inválidas.' });
             }
 
-            const clienteNoBanco = userResult.data;
+            const cliente = result.data;
 
-            // 2. Comparar a senha fornecida com a senha hasheada do banco
-            const isPasswordValid = await bcrypt.compare(senha, clienteNoBanco.senha);
+            // Comparar a senha fornecida com o hash armazenado
+            const isMatch = await bcrypt.compare(senha, cliente.senha);
 
-            if (isPasswordValid) {
-                // Senha correta. Agora, você pode buscar os dados completos do cliente (sem a senha)
-                // e talvez gerar um token JWT para autenticação futura.
-                const fullClienteResult = await clientesRepository.getById(clienteNoBanco.id);
-                if (fullClienteResult.ok) {
-                    res.status(200).json({
-                        status: 200,
-                        ok: true,
-                        message: "Login bem-sucedido!",
-                        data: fullClienteResult.data // Dados completos do cliente (sem senha)
-                    });
-                } else {
-                    // Deveria ser raro, mas para garantir
-                    res.status(500).json({
-                        status: 500,
-                        ok: false,
-                        message: "Erro ao recuperar dados completos do cliente após login."
-                    });
-                }
-            } else {
-                // Senha incorreta
-                res.status(401).json({
-                    status: 401,
-                    ok: false,
-                    message: "Email ou senha inválidos."
-                });
+            if (!isMatch) {
+                return res.status(401).json({ status: 401, ok: false, message: 'Credenciais inválidas.' });
             }
-        } catch (error) {
-            console.error("Erro no processo de login:", error);
-            res.status(500).json({
-                status: 500,
-                ok: false,
-                message: "Erro interno do servidor durante o login."
+
+            // Senha correta: Gerar JWT
+            const payload = {
+                id: cliente.id,
+                email: cliente.email,
+                tipo: 'cliente' // Adicionar o tipo de usuário ao payload
+            };
+
+            const token = jwt.sign(payload, process.env.JWT_SECRET, {
+                expiresIn: process.env.JWT_EXPIRES_IN // Ex: '1h'
             });
+
+            return res.status(200).json({
+                status: 200,
+                ok: true,
+                message: 'Login realizado com sucesso!',
+                data: {
+                    cliente: {
+                        id: cliente.id,
+                        nome: cliente.nome,
+                        email: cliente.email,
+                        // ... outros dados do cliente que você queira retornar (sem a senha)
+                    },
+                    token: token // Retornar o token para o cliente
+                }
+            });
+
+        } catch (error) {
+            console.error('Erro no login do cliente:', error);
+            return res.status(500).json({ status: 500, ok: false, message: 'Erro interno do servidor.' });
         }
     },
 

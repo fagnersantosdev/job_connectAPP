@@ -13,5 +13,5 @@ async function generateHash(password) {
 }
 
 // Chame a função com a senha que você quer hashear
-generateHash("robertoreparos"); // Substitua por sua senha de teste
+generateHash("roberto123"); // Substitua por sua senha de teste
 // generateHash("outrasenha");
