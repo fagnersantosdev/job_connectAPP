@@ -216,14 +216,10 @@ const prestadoresController = {
 
         try {
             // 1. Buscar o prestador pelo email para obter a senha hasheada
-            // Você precisará de um novo método no seu repositório para isso,
-            // que retorne APENAS o ID e a SENHA HASHEADA.
-            // Ex: const userForLogin = await prestadoresRepository.getByEmailForLogin(email);
-            // Por enquanto, vamos usar getById e acessar a senha, mas o ideal é um método mais específico.
-            const userResult = await prestadoresRepository.getByEmailForLogin(email); // Supondo que você criou este método
+            const userResult = await prestadoresRepository.getByEmailForLogin(email);
 
             if (!userResult.ok || !userResult.data) {
-                // Usuário não encontrado ou erro
+                // Prestador não encontrado ou erro
                 return res.status(401).json({
                     status: 401,
                     ok: false,
@@ -231,21 +227,38 @@ const prestadoresController = {
                 });
             }
 
-            const prestadorNoBanco = userResult.data;
 
             // 2. Comparar a senha fornecida com a senha hasheada do banco
             const isPasswordValid = await bcrypt.compare(senha, prestadorNoBanco.senha);
 
             if (isPasswordValid) {
-                // Senha correta. Agora, você pode buscar os dados completos do prestador (sem a senha)
-                // e talvez gerar um token JWT para autenticação futura.
+                // Senha correta: Gerar JWT
+                const payload = {
+                    id: prestadorNoBanco.id,
+                    email: prestadorNoBanco.email, // O método getByEmailForLogin precisa retornar o email também, ou você pode buscar o prestador completo aqui.
+                    tipo: 'prestador' // Adicionar o tipo de usuário ao payload
+                };
+
+                const token = jwt.sign(payload, process.env.JWT_SECRET, {
+                    expiresIn: process.env.JWT_EXPIRES_IN // Ex: '1h'
+                });
+
+                // Buscar os dados completos do prestador (sem a senha) para retornar na resposta
                 const fullPrestadorResult = await prestadoresRepository.getById(prestadorNoBanco.id);
                 if (fullPrestadorResult.ok) {
                     res.status(200).json({
                         status: 200,
                         ok: true,
                         message: "Login bem-sucedido!",
-                        data: fullPrestadorResult.data // Dados completos do prestador (sem senha)
+                        data: {
+                            prestador: {
+                                id: fullPrestadorResult.data.id,
+                                nome: fullPrestadorResult.data.nome,
+                                email: fullPrestadorResult.data.email,
+                                // ... outros dados do prestador que você queira retornar (sem a senha)
+                            },
+                            token: token // Retornar o token para o cliente
+                        }
                     });
                 } else {
                     // Deveria ser raro, mas para garantir
@@ -264,15 +277,15 @@ const prestadoresController = {
                 });
             }
         } catch (error) {
-            console.error("Erro no processo de login:", error);
+            console.error("Erro no processo de login do prestador:", error);
             res.status(500).json({
                 status: 500,
                 ok: false,
-                message: "Erro interno do servidor durante o login."
+                message: "Erro interno do servidor durante o login do prestador."
             });
         }
     },
-
+    
     // --- Obter Foto por ID ---
     // ATENÇÃO: Corrigido para usar prestadoresRepository e lidar com Buffer
     getFotoById: async (req, res) => {
