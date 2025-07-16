@@ -81,3 +81,37 @@
     INSERT INTO servicos_oferecidos (prestador_id, categoria_id, titulo, descricao, valor_estimado, disponibilidade) VALUES
     (1, 3, 'Instalação de Tomadas e Interruptores', 'Instalação e substituição de tomadas e interruptores residenciais e comerciais.', 80.00, 'Segunda a Sábado, 09:00-18:00');
     
+    -- Criação da tabela solicitacoes_servico
+    CREATE TABLE solicitacoes_servico (
+    id SERIAL PRIMARY KEY,
+    cliente_id INTEGER NOT NULL, -- Cliente que fez a solicitação
+    servico_oferecido_id INTEGER NOT NULL, -- Serviço específico que está sendo solicitado
+    data_solicitacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    data_preferencial TIMESTAMP WITH TIME ZONE, -- Data/hora que o cliente prefere o serviço
+    descricao_cliente TEXT, -- Detalhes adicionais do cliente sobre a necessidade
+    status VARCHAR(50) NOT NULL DEFAULT 'pendente', -- Ex: 'pendente', 'aceita', 'recusada', 'concluida', 'cancelada'
+    valor_proposto NUMERIC(10, 2), -- Valor que o prestador pode propor (se for o caso)
+    prestador_id_aceito INTEGER, -- Prestador que aceitou a solicitação (pode ser NULL inicialmente)
+    data_aceitacao TIMESTAMP WITH TIME ZONE,
+    data_conclusao TIMESTAMP WITH TIME ZONE,
+
+    -- Restrições de Chave Estrangeira
+    CONSTRAINT fk_solicitacao_cliente
+        FOREIGN KEY (cliente_id)
+        REFERENCES clientes(id)
+        ON DELETE CASCADE, -- Se o cliente for deletado, suas solicitações também
+    CONSTRAINT fk_solicitacao_servico_oferecido
+        FOREIGN KEY (servico_oferecido_id)
+        REFERENCES servicos_oferecidos(id)
+        ON DELETE RESTRICT, -- Não permite deletar um serviço se houver solicitações ativas
+    CONSTRAINT fk_solicitacao_prestador_aceito
+        FOREIGN KEY (prestador_id_aceito)
+        REFERENCES prestadores(id)
+        ON DELETE SET NULL -- Se o prestador aceito for deletado, o campo fica NULL
+);
+
+-- Índices para otimização
+CREATE INDEX idx_solicitacoes_cliente_id ON solicitacoes_servico (cliente_id);
+CREATE INDEX idx_solicitacoes_servico_oferecido_id ON solicitacoes_servico (servico_oferecido_id);
+CREATE INDEX idx_solicitacoes_status ON solicitacoes_servico (status);
+CREATE INDEX idx_solicitacoes_prestador_aceito_id ON solicitacoes_servico (prestador_id_aceito);

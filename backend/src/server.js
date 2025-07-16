@@ -1,12 +1,16 @@
 import express from 'express';
 // Importando as rotas específicas para cada entidade
-import prestadoresRoutes from './routes/prestadoresRouters.js'; 
-import clientesRoutes from './routes/clientesRouters.js';   
-import categoriasRoutes from './routes/categoriasRoutes.js'; // Adicionado: Rotas para Categorias de Serviço
-import basic from './routes/basicRouters.js'; 
-import servicosOferecidosController from '../controllers/servicosOferecidosController.js';
+import prestadoresRoutes from './routes/prestadoresRouters.js';
+import clientesRoutes from './routes/clientesRouters.js';
+import categoriasRoutes from './routes/categoriasRoutes.js';
+import basic from './routes/basicRouters.js';
+// Importações dos novos arquivos de rotas
+import servicosOferecidosRouters from './routes/servicosOferecidosRouters.js'; // Novo
+import solicitacoesRouters from '../routes/solicitacoesRouters.js';     // Novo
 
-const router = express.Router();
+// Importar o middleware de autenticação (se for aplicado globalmente ou em múltiplos lugares)
+import authMiddleware from '../middlewares/authMiddleware.js';
+
 const app = express();
 // Definindo a porta e o host, preferindo variáveis de ambiente
 const PORT = process.env.PORT || 3000;
@@ -23,11 +27,15 @@ app.use('/prestadores', prestadoresRoutes);
 app.use('/clientes', clientesRoutes);
 
 // As requisições para '/categorias' serão tratadas por categoriasRoutes
-// Este é o passo que integra as rotas de categorias que criamos anteriormente.
 app.use('/categorias', categoriasRoutes);
 
+// As requisições para '/servicos-oferecidos' serão tratadas por servicosOferecidosRouters
+app.use('/servicos-oferecidos', servicosOferecidosRouters); // Montando o novo roteador de serviços oferecidos
+
+// As requisições para '/solicitacoes' serão tratadas por solicitacoesRouters
+app.use('/solicitacoes', solicitacoesRouters); // Montando o novo roteador de solicitações
+
 // Rotas básicas ou de "fallback" (ex: rota raiz '/')
-// Certifique-se de que o basicRouters.js não tenha rotas que conflitem com as acima.
 app.use('/', basic);
 
 // Inicia o servidor na porta e host definidos
@@ -35,15 +43,3 @@ app.listen(PORT, HOST, () => {
     console.log(`Servidor JobConnect rodando em http://${HOST}:${PORT}`);
     console.log('Pressione Ctrl+C para parar.');
 });
-
-// Rotas para Serviços Oferecidos
-// GET /servicos-oferecidos - Obtém todos os serviços (pode ter filtros por query params)
-router.get('/servicos-oferecidos', servicosOferecidosController.getAllServicosOferecidos);
-// GET /servicos-oferecidos/:id - Obtém um serviço específico pelo ID
-router.get('/servicos-oferecidos/:id', servicosOferecidosController.getServicoOferecidoById);
-// POST /servicos-oferecidos - Cria um novo serviço
-router.post('/servicos-oferecidos', servicosOferecidosController.createServicoOferecido);
-// PUT /servicos-oferecidos/:id - Atualiza um serviço existente
-router.put('/servicos-oferecidos/:id', servicosOferecidosController.updateServicoOferecido);
-// DELETE /servicos-oferecidos/:id - Deleta um serviço
-router.delete('/servicos-oferecidos/:id', servicosOferecidosController.deleteServicoOferecido);
