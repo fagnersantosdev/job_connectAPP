@@ -11,7 +11,6 @@ dotenv.config(); // Carregar variáveis de ambiente
 
 const clientesController = {
     // --- Obter Cliente por ID ---
-    // RENOMEADO: getClientes (era getPrestadores)
     getClientes: async (req, res) => {
         const id = req.params.id;
         const result = await clientesRepository.getById(id);
@@ -28,7 +27,6 @@ const clientesController = {
     },
 
     // --- Obter Clientes por Nome ---
-    // RENOMEADO: getClientesByName (era getPrestadoresByName)
     getClientesByName: async (req, res) => {
         const nome = req.params.nome;
         const result = await clientesRepository.getByName(nome);
@@ -45,7 +43,6 @@ const clientesController = {
     },
 
     // --- Obter Todos os Clientes ---
-    // RENOMEADO: getAllClientes (era getAllPrestadores)
     getAllClientes: async (req, res) => {
         const result = await clientesRepository.getAll();
 
@@ -61,7 +58,6 @@ const clientesController = {
     },
 
     // --- Criar Novo Cliente ---
-    // RENOMEADO: createClientes (era createPrestadores)
     createClientes: async (req, res) => {
         // Removido 'raioAtuacao' do destructuring, pois não é campo de cliente
         const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
@@ -127,9 +123,7 @@ const clientesController = {
     },
 
     // --- Atualizar Cliente ---
-    // RENOMEADO: updateCliente (era updateUser)
     updateCliente: async (req, res) => {
-        // Removido 'raioAtuacao' do destructuring
         const { id, nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
 
         // Validações
@@ -199,7 +193,6 @@ const clientesController = {
     },
 
     // --- Deletar Cliente ---
-    // RENOMEADO: deleteCliente (era deleteUser)
     deleteCliente: async (req, res) => {
         const id = req.params.id;
         const result = await clientesRepository.delete(id);
@@ -207,7 +200,6 @@ const clientesController = {
     },
 
     // --- NOVO MÉTODO: Login de Cliente ---
-    // RENOMEADO: loginCliente 
     loginCliente: async (req, res) => {
         const { email, senha } = req.body;
 

@@ -83,36 +83,36 @@ const prestadoresRepository = {
 
     // --- NOVO MÉTODO: Obter Prestador por Email para Login (apenas ID e Senha) ---
     // Este método é usado pelo controller para obter o hash da senha para comparação com Bcrypt.
-    getByEmailForLogin: async (email) => {
-        const sql = `SELECT id, senha FROM prestadores WHERE email=$1;`;
-        try {
-            // .oneOrNone() porque esperamos 0 ou 1 resultado
-            const prestador = await conexao.oneOrNone(sql, [email]);
-            if (prestador) {
-                return {
-                    status: 200,
-                    ok: true,
-                    message: 'Credenciais de login obtidas com sucesso',
-                    data: prestador // Retorna { id, senha: 'hash_da_senha' }
-                };
-            } else {
-                return {
-                    status: 404, // Não encontrado
-                    ok: false,
-                    message: 'Prestador não encontrado pelo email',
-                    data: null
-                };
-            }
-        } catch (error) {
-            console.error('Erro ao buscar prestador por email para login:', error);
+
+getByEmailForLogin: async (email) => {
+    const sql = `SELECT id, email, senha FROM prestadores WHERE email=$1;`;
+    try {
+        const prestador = await conexao.oneOrNone(sql, [email]);
+        if (prestador) {
             return {
-                status: 500,
+                status: 200,
+                ok: true,
+                message: 'Credenciais de login obtidas com sucesso',
+                data: prestador // Agora retorna { id, email, senha: 'hash_da_senha' }
+            };
+        } else {
+            return {
+                status: 404,
                 ok: false,
-                message: 'Erro de servidor ao buscar prestador por email para login',
-                sqlMessage: error.message
+                message: 'Prestador não encontrado pelo email',
+                data: null
             };
         }
-    },
+    } catch (error) {
+        console.error('Erro ao buscar prestador por email para login:', error);
+        return {
+            status: 500,
+            ok: false,
+            message: 'Erro de servidor ao buscar prestador por email para login',
+            sqlMessage: error.message
+        };
+    }
+},
 
     // --- Criar Novo Prestador ---
     create: async (obj) => {

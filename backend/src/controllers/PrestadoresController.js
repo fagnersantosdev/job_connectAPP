@@ -1,6 +1,10 @@
 import prestadoresRepository from "../repositories/prestadoresRepository.js";
-import { isEmail } from "../shared/util.js"; // Supondo que blobToBase64 não será mais necessário aqui, ou será adaptado.
-import bcrypt from 'bcrypt'; // Importe a biblioteca bcrypt
+import { isEmail } from "../shared/util.js";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'; // Importar jsonwebtoken
+import dotenv from 'dotenv'; // Importar dotenv
+
+dotenv.config(); // Carregar as variáveis de ambiente do arquivo .env
 
 // Configuração do custo do Bcrypt. 10 é um bom valor inicial.
 const saltRounds = 10;
@@ -9,7 +13,6 @@ const prestadoresController = {
     // --- Obter Prestador por ID ---
     getPrestadores: async (req, res) => {
         const id = req.params.id;
-        // O repositório agora retorna um objeto { status, ok, message, data }
         const result = await prestadoresRepository.getById(id);
 
         if (result.ok) {
@@ -78,10 +81,6 @@ const prestadoresController = {
         if (!telefone || !/^\d{10,11}$/.test(telefone)) {
             erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
         }
-        // Se a foto é um Buffer, você pode passá-la diretamente
-        // Se a foto vem como base64 da requisição, você precisaria convertê-la para Buffer aqui
-        // Exemplo: if (foto && typeof foto === 'string' && foto.startsWith('data:')) { fotoBuffer = Buffer.from(foto.split(',')[1], 'base64'); }
-        // Se `foto.buffer` já é um Buffer (ex: vindo de um middleware como Multer), use-o.
         if (!foto || !foto.buffer) {
             erros.push("Foto não enviada ou inválida. Envie uma imagem no formato correto.");
         }
@@ -112,7 +111,7 @@ const prestadoresController = {
             };
 
             const result = await prestadoresRepository.create(novo);
-            res.status(result.status).json(result); // O repositório já retorna o objeto de resposta completo
+            res.status(result.status).json(result);
         } catch (error) {
             console.error("Erro ao criar prestador:", error);
             res.status(500).json({
@@ -135,13 +134,9 @@ const prestadoresController = {
         if (!isEmail(email)) {
             erros.push("Email inválido");
         }
-        // A validação de senha aqui deve ser cuidadosa.
-        // Se a senha for opcional na atualização, não valide o tamanho se ela não for fornecida.
-        if (senha && senha.length < 8) { // Só valida se a senha for fornecida
+        if (senha && senha.length < 8) {
             erros.push("A senha deve ter no mínimo 8 caracteres (se estiver sendo atualizada)");
         }
-        // Removidas validações de `confirma` e `acesso` pois não estão no req.body
-        // e não são relevantes para a entidade Prestador neste contexto.
 
         if (erros.length > 0) {
             return res.status(400).json({
@@ -153,31 +148,30 @@ const prestadoresController = {
 
         try {
             let hashedPassword = senha;
-            // HASH DA SENHA COM BCrypt SE A SENHA ESTIVER SENDO ATUALIZADA
-            if (senha) { // Se uma nova senha foi fornecida, hasheie-a
+            if (senha) {
                 hashedPassword = await bcrypt.hash(senha, saltRounds);
             } else {
-                // Se a senha não foi fornecida na atualização, você pode:
-                // 1. Manter a senha existente (buscando-a do banco antes).
-                // 2. Exigir que a senha seja sempre fornecida para atualização.
-                // Por simplicidade, se não fornecida, assumimos que não será atualizada.
-                // O repositório precisaria de lógica para não atualizar o campo senha se for null/undefined.
-                // Ou você pode buscar o prestador, pegar a senha antiga, e usá-la se nenhuma nova for fornecida.
-                // Para este exemplo, vou assumir que se `senha` não for fornecida, ela não será alterada no banco.
-                // Isso exigirá um ajuste no método `update` do repositório para lidar com campos opcionais.
-                // Ou, mais seguro, sempre peça a senha atual para confirmar a atualização, e a nova senha se for para mudar.
-                // Para o propósito de hashing, se `senha` for vazia, `hashedPassword` será vazia.
+                const currentPrestadorResult = await prestadoresRepository.getById(id);
+                if (currentPrestadorResult.ok && currentPrestadorResult.data) {
+                    hashedPassword = currentPrestadorResult.data.senha;
+                } else {
+                    return res.status(404).json({
+                        status: 404,
+                        ok: false,
+                        message: "Prestador não encontrado para atualização ou senha atual não disponível."
+                    });
+                }
             }
 
             const updatedData = {
                 nome: nome,
-                cpf_cnpj: cpf_cnpj, // Adicionado para consistência, embora não seja usualmente atualizado
+                cpf_cnpj: cpf_cnpj,
                 email: email,
-                senha: hashedPassword, // Senha hasheada (ou a original se não foi alterada)
+                senha: hashedPassword,
                 cep: cep,
                 complemento: complemento,
                 numero: numero,
-                foto: foto ? foto.buffer : null, // Passando o Buffer da foto
+                foto: foto ? foto.buffer : null,
                 raioAtuacao: raioAtuacao,
                 telefone: telefone
             };
@@ -201,7 +195,7 @@ const prestadoresController = {
         res.status(result.status).json(result);
     },
 
-    // --- NOVO MÉTODO: Login de Prestador ---
+    // --- NOVO MÉTODO: Login de Prestador (AGORA COM JWT) ---
     loginPrestador: async (req, res) => {
         const { email, senha } = req.body;
 
@@ -227,6 +221,7 @@ const prestadoresController = {
                 });
             }
 
+            const prestadorNoBanco = userResult.data;
 
             // 2. Comparar a senha fornecida com a senha hasheada do banco
             const isPasswordValid = await bcrypt.compare(senha, prestadorNoBanco.senha);
@@ -285,16 +280,14 @@ const prestadoresController = {
             });
         }
     },
-    
+
     // --- Obter Foto por ID ---
-    // ATENÇÃO: Corrigido para usar prestadoresRepository e lidar com Buffer
     getFotoById: async (req, res) => {
         const id = req.params.id;
-        const result = await prestadoresRepository.getById(id); // Usando prestadoresRepository
+        const result = await prestadoresRepository.getById(id);
 
         if (result.ok && result.data && result.data.foto) {
-            const fotoBuffer = result.data.foto; // Supondo que pg-promise retorna um Buffer para BYTEA
-            // Converte o Buffer para Base64
+            const fotoBuffer = result.data.foto;
             const base64Image = Buffer.from(fotoBuffer).toString('base64');
             res.status(200).send(`<h1>Imagem</h1><img src="data:image/png;base64,${base64Image}">`);
         } else if (result.ok && result.data && !result.data.foto) {
