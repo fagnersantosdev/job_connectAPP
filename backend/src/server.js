@@ -4,12 +4,12 @@ import prestadoresRoutes from './routes/prestadoresRouters.js';
 import clientesRoutes from './routes/clientesRouters.js';
 import categoriasRoutes from './routes/categoriasRoutes.js';
 import basic from './routes/basicRouters.js';
-// Importações dos novos arquivos de rotas
-import servicosOferecidosRouters from './routes/servicosOferecidosRouters.js'; // Novo
-import solicitacoesRouters from '../routes/solicitacoesRouters.js';     // Novo
+import servicosOferecidosRouters from './routes/servicosOferecidosRouters.js';
+import solicitacoesRouters from './routes/solicitacoesRouters.js';
+import avaliacoesRouters from './routes/avaliacoesRouters.js'; // NOVO: Importar rotas de avaliações
 
 // Importar o middleware de autenticação (se for aplicado globalmente ou em múltiplos lugares)
-import authMiddleware from '../middlewares/authMiddleware.js';
+import authMiddleware from './middlewares/authMiddleware.js';
 
 const app = express();
 // Definindo a porta e o host, preferindo variáveis de ambiente
@@ -20,20 +20,12 @@ const HOST = process.env.HOST || 'localhost';
 app.use(express.json());
 
 // --- Montagem das Rotas ---
-// As requisições para '/prestadores' serão tratadas por prestadoresRoutes
 app.use('/prestadores', prestadoresRoutes);
-
-// As requisições para '/clientes' serão tratadas por clientesRoutes
 app.use('/clientes', clientesRoutes);
-
-// As requisições para '/categorias' serão tratadas por categoriasRoutes
 app.use('/categorias', categoriasRoutes);
-
-// As requisições para '/servicos-oferecidos' serão tratadas por servicosOferecidosRouters
-app.use('/servicos-oferecidos', servicosOferecidosRouters); // Montando o novo roteador de serviços oferecidos
-
-// As requisições para '/solicitacoes' serão tratadas por solicitacoesRouters
-app.use('/solicitacoes', solicitacoesRouters); // Montando o novo roteador de solicitações
+app.use('/servicos-oferecidos', servicosOferecidosRouters);
+app.use('/solicitacoes', solicitacoesRouters);
+app.use('/avaliacoes', avaliacoesRouters); // NOVO: Montar o roteador de avaliações
 
 // Rotas básicas ou de "fallback" (ex: rota raiz '/')
 app.use('/', basic);

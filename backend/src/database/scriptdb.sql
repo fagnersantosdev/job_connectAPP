@@ -115,3 +115,70 @@ CREATE INDEX idx_solicitacoes_cliente_id ON solicitacoes_servico (cliente_id);
 CREATE INDEX idx_solicitacoes_servico_oferecido_id ON solicitacoes_servico (servico_oferecido_id);
 CREATE INDEX idx_solicitacoes_status ON solicitacoes_servico (status);
 CREATE INDEX idx_solicitacoes_prestador_aceito_id ON solicitacoes_servico (prestador_id_aceito);
+
+-- Criação da tabela avaliacoes
+CREATE TABLE avaliacoes (
+    id SERIAL PRIMARY KEY,
+    solicitacao_id INTEGER NOT NULL UNIQUE, -- A avaliação está ligada a uma solicitação de serviço específica
+    cliente_id INTEGER NOT NULL, -- Cliente que fez a avaliação
+    prestador_id INTEGER NOT NULL, -- Prestador que foi avaliado
+    nota INTEGER NOT NULL CHECK (nota >= 1 AND nota <= 5), -- Nota de 1 a 5
+    comentario TEXT, -- Comentário detalhado sobre o serviço
+    data_avaliacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Restrições de Chave Estrangeira
+    CONSTRAINT fk_avaliacao_solicitacao
+        FOREIGN KEY (solicitacao_id)
+        REFERENCES solicitacoes_servico(id)
+        ON DELETE CASCADE, -- Se a solicitação for deletada, a avaliação também
+    CONSTRAINT fk_avaliacao_cliente
+        FOREIGN KEY (cliente_id)
+        REFERENCES clientes(id)
+        ON DELETE CASCADE, -- Se o cliente for deletado, suas avaliações também
+    CONSTRAINT fk_avaliacao_prestador
+        FOREIGN KEY (prestador_id)
+        REFERENCES prestadores(id)
+        ON DELETE CASCADE -- Se o prestador for deletado, suas avaliações também
+);
+
+-- Adicionar índices para otimizar buscas
+CREATE INDEX idx_avaliacoes_solicitacao_id ON avaliacoes (solicitacao_id);
+CREATE INDEX idx_avaliacoes_cliente_id ON avaliacoes (cliente_id);
+CREATE INDEX idx_avaliacoes_prestador_id ON avaliacoes (prestador_id);
+
+-- Criação da tabela mensagens
+CREATE TABLE mensagens (
+    id SERIAL PRIMARY KEY,
+    solicitacao_id INTEGER NOT NULL, -- A mensagem está vinculada a uma solicitação de serviço
+    remetente_id INTEGER NOT NULL, -- ID do usuário que enviou a mensagem (cliente ou prestador)
+    remetente_tipo VARCHAR(20) NOT NULL, -- 'cliente' ou 'prestador'
+    destinatario_id INTEGER NOT NULL, -- ID do usuário que recebeu a mensagem
+    destinatario_tipo VARCHAR(20) NOT NULL, -- 'cliente' ou 'prestador'
+    conteudo TEXT, -- Conteúdo da mensagem (agora pode ser NULL se for só foto)
+    foto_url VARCHAR(255), -- NOVO CAMPO: URL para a imagem anexada à mensagem (opcional)
+    data_envio TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    lida BOOLEAN DEFAULT FALSE, -- Indica se a mensagem foi lida
+
+    -- Restrição para garantir que remetente_tipo seja 'cliente' ou 'prestador'
+    CONSTRAINT chk_remetente_tipo CHECK (remetente_tipo IN ('cliente', 'prestador')),
+    CONSTRAINT chk_destinatario_tipo CHECK (destinatario_tipo IN ('cliente', 'prestador')),
+
+    -- A validação de que remetente_id/destinatario_id existe em clientes OU prestadores
+    -- precisará ser feita na camada da aplicação (controller/repository).
+
+    CONSTRAINT fk_mensagem_solicitacao
+        FOREIGN KEY (solicitacao_id)
+        REFERENCES solicitacoes_servico(id)
+        ON DELETE CASCADE, -- Se a solicitação for deletada, as mensagens relacionadas também
+
+    -- Adicionar uma restrição para garantir que ou 'conteudo' ou 'foto_url' não seja nulo,
+    -- mas não ambos (ou ambos podem ser permitidos, dependendo da regra de negócio)
+    -- Exemplo: pelo menos um dos dois deve existir
+    CONSTRAINT chk_conteudo_ou_foto CHECK (conteudo IS NOT NULL OR foto_url IS NOT NULL)
+);
+
+-- Índices para otimizar buscas por remetente, destinatário e solicitação
+CREATE INDEX idx_mensagens_solicitacao_id ON mensagens (solicitacao_id);
+CREATE INDEX idx_mensagens_remetente_id ON mensagens (remetente_id);
+CREATE INDEX idx_mensagens_destinatario_id ON mensagens (destinatario_id);
+CREATE INDEX idx_mensagens_data_envio ON mensagens (data_envio);

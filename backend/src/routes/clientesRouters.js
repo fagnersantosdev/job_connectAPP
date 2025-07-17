@@ -1,32 +1,43 @@
 import express from 'express';
-import clientesControllers from '../controllers/clientesControllers.js'; // Ajustado para clientesController
+import clientesControllers from '../controllers/clientesController.js'; // Ajustado para clientesController.js
+import authMiddleware from '../middlewares/authMiddleware.js'; // Importar o middleware de autenticação
+
 
 const router = express.Router();
 
-// --- Rotas de Clientes ---
+// --- Rotas Públicas de Clientes ---
+// A rota de login não deve ser protegida
+router.post('/login', clientesControllers.loginCliente); // Rota de login do cliente
 
-// GET - Listar todos os clientes
+// A rota de cadastro (POST /) geralmente é pública para permitir novos registros
+router.post('/', clientesControllers.createClientes); // Cadastrar novo cliente
+
+// GET - Todos os clientes (pode ser público para listagem geral, ou protegido se só logados puderem ver)
+// Por enquanto, deixaremos público para facilitar a visualização de serviços, mas pode ser protegido depois.
 router.get('/', clientesControllers.getAllClientes);
 
-// GET - Buscar cliente por ID
-router.get('/id/:id', clientesControllers.getClientes); // Usando getClientes que busca por ID
+// GET - Buscar por ID (pode ser público para visualização de perfil, ou protegido)
+router.get('/id/:id', clientesControllers.getClientes);
 
-// GET - Buscar cliente por nome
+// GET - Buscar por nome (pode ser público)
 router.get('/nome/:nome', clientesControllers.getClientesByName);
 
-// GET - Buscar foto do cliente por ID
+// GET - Buscar foto (pode ser público)
 router.get('/foto/:id', clientesControllers.getFotoById);
 
-// POST - Cadastrar novo cliente
-router.post('/', clientesControllers.createClientes);
 
-// POST - Login do cliente (NOVA ROTA)
-router.post('/login', clientesControllers.loginCliente); // Adicionada rota para o novo método de login
+// --- Rotas Protegidas de Clientes (exigem JWT) ---
+// Aplica o authMiddleware a todas as rotas abaixo dele neste roteador.
+// Isso significa que qualquer requisição para estas rotas precisará de um token JWT válido.
 
-// PUT - Atualizar cliente (o ID deve vir na URL para ser mais RESTful)
-router.put('/:id', clientesControllers.updateCliente); // Ajustado para updateCliente e ID na URL
+// PUT - Atualizar cliente (apenas o próprio cliente logado pode atualizar seus dados)
+// A rota PUT para atualização deve ser específica para o ID do cliente logado, ou o ID deve vir no parâmetro.
+// Se o ID for extraído do token (req.user.id), a rota pode ser '/meu-perfil' ou '/'.
+// Se o ID vier na URL, o middleware de autorização no controller deve verificar se o ID corresponde ao do token.
+router.put('/:id', authMiddleware, clientesControllers.updateCliente); // CORRIGIDO: de updateUser para updateCliente
 
-// DELETE - Excluir cliente
-router.delete('/:id', clientesControllers.deleteCliente); // Ajustado para deleteCliente
+// DELETE - Excluir cliente (apenas o próprio cliente logado pode excluir sua conta)
+router.delete('/:id', authMiddleware, clientesControllers.deleteCliente); // CORRIGIDO: de deleteUser para deleteCliente
 
 export default router;
+
