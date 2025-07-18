@@ -1,5 +1,5 @@
 import express from 'express';
-import clientesControllers from '../controllers/clientesController.js'; // Ajustado para clientesController.js
+import clientesControllers from '../controllers/clientesControllers.js'; // Ajustado para clientesController.js
 import authMiddleware from '../middlewares/authMiddleware.js'; // Importar o middleware de autenticação
 
 

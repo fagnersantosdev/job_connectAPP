@@ -9,7 +9,7 @@ const saltRounds = 10;
 
 dotenv.config(); // Carregar variáveis de ambiente
 
-const clientesController = {
+const clientesControllers = {
     // --- Obter Cliente por ID ---
     getClientes: async (req, res) => {
         const id = req.params.id;
@@ -277,4 +277,4 @@ const clientesController = {
     },
 };
 
-export default clientesController;
+export default clientesControllers;

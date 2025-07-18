@@ -1,24 +1,35 @@
-const { Pool } = require('pg-promise'); // Importa o Pool do pacote 'pg'
+// src/database/conexao.js
+    import pgPromise from 'pg-promise';
+    import dotenv from 'dotenv';
 
-const pool = new Pool({
-  user: 'seu_usuario_postgresql',
-  host: 'localhost', // Ou o IP/hostname do seu servidor PostgreSQL
-  database: 'seu_banco_de_dados_postgresql',
-  password: 'postegrenet',
-  port: 5432, // Porta padrão do PostgreSQL. Altere se for diferente.
-});
+    dotenv.config(); // Carrega as variáveis de ambiente
 
-// Testar a conexão (opcional, mas boa prática)
-pool.on('connect', () => {
-  console.log('Conectado ao PostgreSQL!');
-});
+    const pgp = pgPromise();
 
-pool.on('error', (err) => {
-  console.error('Erro na conexão com o PostgreSQL:', err);
-});
+    const config = {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 5432,
+        database: process.env.DB_DATABASE || 'jobconnect_db',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'postgrenet',
+        max: 10, // Máximo de conexões no pool
+        idleTimeoutMillis: 30000, // Tempo de inatividade antes de fechar uma conexão
+    };
 
-module.exports = db;
+    const db = pgp(config);
 
+    // Teste de conexão (opcional, mas bom para depuração)
+    db.connect()
+        .then(obj => {
+            console.log('Conectado ao banco de dados PostgreSQL!');
+            obj.done(); // Libera a conexão
+        })
+        .catch(error => {
+            console.error('Erro ao conectar ao banco de dados:', error.message || error);
+        });
+
+    export default db; // Exporta a instância do banco de dados como default
+    
 // docker exec -it jobconnect_postgres_db psql -U postgres jobconnect_db (PARA EXECUTAR O BANCO)
 // \dt (PARA LISTAR TABELAS DO BA)
 // SELECT * FROM nome_da_tabela; (MOSTRA TODOS OS DADOS INSERIDOS DA TABELA)
