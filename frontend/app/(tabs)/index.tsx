@@ -1,138 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Image, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
+import { Platform, StyleSheet } from 'react-native';
 
-export default function App() {
-  const [loading, setLoading] = useState(true);
+import { HelloWave } from '@/components/HelloWave';
+import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 
-  useEffect(() => {
-    // Simulação de carregamento (ex: checar autenticação)
-    setTimeout(() => {
-      setLoading(false);
-    }, 3000);
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Image 
-          source={require('../../assets/images/jobconnect_logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <ActivityIndicator size="large" color="#ffffff" style={styles.loading} />
-      </View>
-    );
-  }
-
+export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={estilos.container}>
-        {/* Mensagem de boas-vindas */}
-        <Text style={estilos.textoBoasVindas}>Bem vindo</Text>
-
-        {/* Botões de seleção */}
-        <TouchableOpacity style={estilos.botao}>
-          <Text style={estilos.textoBotao}>Sou Cliente</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={estilos.botao}>
-          <Text style={estilos.textoBotao}>Sou Prestador</Text>
-        </TouchableOpacity>
-
-        {/* Link para login */}
-        <View style={estilos.containerLogin}>
-          <Text style={estilos.textoLogin}>Já tem uma conta? </Text>
-          <TouchableOpacity>
-            <Text style={estilos.linkLogin}>Faça Login</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botão principal */}
-        <TouchableOpacity style={estilos.botaoComecar}>
-          <Text style={estilos.textoBotaoComecar}>Começar</Text>
-        </TouchableOpacity>
-
-        {/* Rodapé */}
-        <Text style={estilos.textoRodape}>JobConnect conectando serviços, facilitando a sua vida!</Text>
-      </SafeAreaView>
-    </View>
+    <ParallaxScrollView
+      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerImage={
+        <Image
+          source={require('@/assets/images/partial-react-logo.png')}
+          style={styles.reactLogo}
+        />
+      }>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Welcome!</ThemedText>
+        <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+        <ThemedText>
+          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
+          Press{' '}
+          <ThemedText type="defaultSemiBold">
+            {Platform.select({
+              ios: 'cmd + d',
+              android: 'cmd + m',
+              web: 'F12',
+            })}
+          </ThemedText>{' '}
+          to open developer tools.
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
+        <ThemedText>
+          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
+        <ThemedText>
+          {`When you're ready, run `}
+          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
+          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
+          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
+          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+        </ThemedText>
+      </ThemedView>
+    </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#65AFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 200,
-    height: 200,
-  },
-  loading: {
-    marginTop: 30,
-  },
-});
-
-const estilos = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    justifyContent: 'center',
-    width: '100%',
-  },
-  textoBoasVindas: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 50,
-    color: '#333',
-  },
-  botao: {
-    backgroundColor: '#f0f0f0',
-    padding: 18,
-    borderRadius: 10,
-    marginVertical: 12,
-    alignItems: 'center',
-  },
-  textoBotao: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#333',
-  },
-  containerLogin: {
+  titleContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 30,
-    marginBottom: 20,
-  },
-  textoLogin: {
-    fontSize: 16,
-    color: '#666',
-  },
-  linkLogin: {
-    fontSize: 16,
-    color: '#0066cc',
-    fontWeight: 'bold',
-  },
-  botaoComecar: {
-    backgroundColor: '#0066cc',
-    padding: 18,
-    borderRadius: 10,
-    marginVertical: 20,
     alignItems: 'center',
+    gap: 8,
   },
-  textoBotaoComecar: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
+  stepContainer: {
+    gap: 8,
+    marginBottom: 8,
   },
-  textoRodape: {
-    textAlign: 'center',
-    color: '#666',
-    fontSize: 14,
-    marginTop: 30,
+  reactLogo: {
+    height: 178,
+    width: 290,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
   },
 });
