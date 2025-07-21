@@ -33,7 +33,7 @@ const servicosOferecidosControllers = {
      * @param {Object} req - Objeto de requisição (params: { id }).
      * @param {Object} res - Objeto de resposta.
      */
-    getServicoOferecidoById: async (req, res) => {
+    getServicosOferecidoById: async (req, res) => {
         const id = parseInt(req.params.id);
         if (isNaN(id)) {
             return res.status(400).json({ status: 400, ok: false, message: "ID do serviço inválido." });

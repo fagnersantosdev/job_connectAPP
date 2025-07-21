@@ -5,7 +5,7 @@ const categoriasRepository = {
      * @description Obtém todas as categorias de serviço.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>} Objeto de resposta padronizado.
      */
-    getAllCategorias: async () => {
+    getAll: async () => { // RENOMEADO: de getAllCategorias para getAll
         const sql = 'SELECT id, nome, icone_url FROM categorias_servico;';
         try {
             const list = await conexao.any(sql); // .any() retorna um array de todos os resultados (ou vazio)
@@ -31,7 +31,7 @@ const categoriasRepository = {
      * @param {number} id - O ID da categoria.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
      */
-    getCategoriasById: async (id) => {
+    getById: async (id) => { // RENOMEADO: de getCategoriasById para getById
         const sql = `SELECT id, nome, icone_url FROM categorias_servico WHERE id=$1;`;
         try {
             const categoria = await conexao.oneOrNone(sql, [id]); // .oneOrNone() retorna um objeto ou null
@@ -66,7 +66,7 @@ const categoriasRepository = {
      * @param {Object} obj - Objeto contendo os dados da categoria (nome, icone_url).
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|string}>} Objeto de resposta padronizado.
      */
-    createCategorias: async (obj) => {
+    create: async (obj) => { // RENOMEADO: de createCategorias para create
         const sql = `INSERT INTO categorias_servico (nome, icone_url) VALUES ($1, $2) RETURNING *;`;
         try {
             const newCategoria = await conexao.one(sql, [obj.nome, obj.icone_url]); // .one() espera exatamente um resultado
@@ -101,7 +101,7 @@ const categoriasRepository = {
      * @param {Object} obj - Objeto contendo os dados atualizados da categoria (nome, icone_url).
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
      */
-    updateCategorias: async (id, obj) => {
+    update: async (id, obj) => { // RENOMEADO: de updateCategorias para update
         const sql = `UPDATE categorias_servico SET nome=$1, icone_url=$2 WHERE id=$3 RETURNING *;`;
         try {
             const updatedCategoria = await conexao.oneOrNone(sql, [obj.nome, obj.icone_url, id]);
@@ -144,7 +144,7 @@ const categoriasRepository = {
      * @param {number} id - O ID da categoria a ser deletada.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
      */
-    deleteCategorias: async (id) => {
+    delete: async (id) => { // RENOMEADO: de deleteCategorias para delete
         const sql = "DELETE FROM categorias_servico WHERE id=$1 RETURNING id;"; // Retorna o ID da linha deletada
         try {
             const deletedRow = await conexao.oneOrNone(sql, [id]);

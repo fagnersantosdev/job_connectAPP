@@ -4,7 +4,7 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 import multer from 'multer'; // Importar multer
 import path from 'path'; // Importar path para lidar com caminhos de arquivo
 import { fileURLToPath } from 'url'; // Para __dirname em módulos ES
-import mensagensControllers from '../controllers/mensagensControllers.js';
+
 
 // __dirname não está disponível em módulos ES (import/export), então precisamos recriá-lo
 const __filename = fileURLToPath(import.meta.url);

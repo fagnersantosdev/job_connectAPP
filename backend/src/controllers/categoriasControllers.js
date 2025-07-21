@@ -7,6 +7,7 @@ const categoriasControllers = {
      * @param {Object} res - Objeto de resposta.
      */
     getAllCategorias: async (req, res) => {
+        // CORRIGIDO: Chamando categoriasRepository.getAll()
         const result = await categoriasRepository.getAll();
         res.status(result.status).json(result); // O repositório já retorna o objeto de resposta completo
     },
@@ -26,6 +27,7 @@ const categoriasControllers = {
             });
         }
 
+        // CORRIGIDO: Chamando categoriasRepository.getById()
         const result = await categoriasRepository.getById(id);
         res.status(result.status).json(result);
     },
@@ -61,6 +63,7 @@ const categoriasControllers = {
 
         try {
             const newCategoria = { nome: nome.trim(), icone_url: icone_url || null }; // Trim no nome e null se icone_url for vazio
+            // CORRIGIDO: Chamando categoriasRepository.create()
             const result = await categoriasRepository.create(newCategoria);
             res.status(result.status).json(result);
         } catch (error) {
@@ -112,6 +115,7 @@ const categoriasControllers = {
 
         try {
             const updatedData = { nome: nome.trim(), icone_url: icone_url || null };
+            // CORRIGIDO: Chamando categoriasRepository.update()
             const result = await categoriasRepository.update(id, updatedData);
             res.status(result.status).json(result);
         } catch (error) {
@@ -139,6 +143,7 @@ const categoriasControllers = {
             });
         }
 
+        // CORRIGIDO: Chamando categoriasRepository.delete()
         const result = await categoriasRepository.delete(id);
         res.status(result.status).json(result);
     }

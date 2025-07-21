@@ -10,15 +10,15 @@ const router = express.Router();
 router.get('/', categoriasControllers.getAllCategorias);
 
 // GET /categorias/:id - Obtém uma categoria específica pelo ID
-router.get('/:id', categoriasControllers.getCategoriaById);
+router.get('/:id', categoriasControllers.getCategoriasById);
 
 // POST /categorias - Cria uma nova categoria
-router.post('/', categoriasControllers.createCategoria);
+router.post('/', categoriasControllers.createCategorias);
 
 // PUT /categorias/:id - Atualiza uma categoria existente
-router.put('/:id', categoriasControllers.updateCategoria);
+router.put('/:id', categoriasControllers.updateCategorias);
 
 // DELETE /categorias/:id - Deleta uma categoria
-router.delete('/:id', categoriasControllers.deleteCategoria);
+router.delete('/:id', categoriasControllers.deleteCategorias);
 
 export default router;
