@@ -3,7 +3,7 @@ import solicitacoesRepository from "../repositories/solicitacoesRepository.js";
 import clientesRepository from "../repositories/clientesRepository.js";
 import prestadoresRepository from "../repositories/prestadoresRepository.js";
 
-const mensagensController = {
+const mensagensControllers = {
     /**
      * @description Envia uma nova mensagem. O remetente é o usuário logado.
      * Pode incluir texto e/ou uma foto.
@@ -239,4 +239,4 @@ const mensagensController = {
     }
 };
 
-export default mensagensController;
+export default mensagensControllers;

@@ -1,5 +1,5 @@
 import express from 'express';
-import avaliacoesControllers from '../controllers/avaliacoesController.js';
+import avaliacoesControllers from '../controllers/avaliacoesControllers.js';
 import authMiddleware from '../middlewares/authMiddleware.js'; // Importar o middleware de autenticação
 
 const router = express.Router();

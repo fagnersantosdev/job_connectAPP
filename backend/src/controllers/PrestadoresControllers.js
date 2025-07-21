@@ -9,7 +9,7 @@ dotenv.config(); // Carregar as variáveis de ambiente do arquivo .env
 // Configuração do custo do Bcrypt. 10 é um bom valor inicial.
 const saltRounds = 10;
 
-const prestadoresController = {
+const prestadoresControllers = {
     // --- Obter Prestador por ID ---
     getPrestadores: async (req, res) => {
         const id = req.params.id;
@@ -306,4 +306,4 @@ const prestadoresController = {
     },
 };
 
-export default prestadoresController;
+export default prestadoresControllers;

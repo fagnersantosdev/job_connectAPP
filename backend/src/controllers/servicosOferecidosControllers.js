@@ -1,6 +1,6 @@
 import servicosOferecidosRepository from "../repositories/servicosOferecidosRepository.js";
 
-const servicosOferecidosController = {
+const servicosOferecidosControllers = {
     /**
      * @description Obtém todos os serviços oferecidos. Pode ser filtrado por prestador_id ou categoria_id.
      * @param {Object} req - Objeto de requisição (query: { prestador_id, categoria_id, titulo }).
@@ -162,4 +162,4 @@ const servicosOferecidosController = {
     }
 };
 
-export default servicosOferecidosController;
+export default servicosOferecidosControllers;

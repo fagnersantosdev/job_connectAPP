@@ -1,6 +1,6 @@
 import solicitacoesRepository from "../repositories/solicitacoesRepository.js";
 
-const solicitacoesController = {
+const solicitacoesControllers = {
     /**
      * @description Cria uma nova solicitação de serviço.
      * @param {Object} req - Objeto de requisição (body: { servico_oferecido_id, data_preferencial, descricao_cliente }).
@@ -242,4 +242,4 @@ const solicitacoesController = {
     }
 };
 
-export default solicitacoesController;
+export default solicitacoesControllers;
