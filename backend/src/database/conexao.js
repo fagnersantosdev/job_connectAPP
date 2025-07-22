@@ -46,3 +46,7 @@
 // docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db < database/schema.sql (cript SQL para criar as tabelas e inserir os dados EM UMA NOVA MÁQUINA)
 // \c (cancelar o buffer da query atual)
 // \q (desconectá-lo do banco de dados e fechar o cliente)
+
+// comando para atualizar senha do cliente ou prestador direto no terminal:
+// echo "UPDATE clientes SET senha = 'SEU_NOVO_HASH_BCRYPT_AQUI' WHERE id = 1;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
+// echo "UPDATE prestadores SET senha = 'SEU_NOVO_HASH_BCRYPT_AQUI' WHERE id = 1;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
