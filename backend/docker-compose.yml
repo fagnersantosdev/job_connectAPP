@@ -1,20 +1,19 @@
+    version: '3.8'
 
+    services:
+      db:
+        image: postgres:14 # Ou a versão que você está usando
+        container_name: jobconnect_postgres_db
+        restart: always
+        environment:
+          POSTGRES_DB: jobconnect_db # Nome do seu banco de dados
+          POSTGRES_USER: postgres   # Usuário do banco de dados
+          POSTGRES_PASSWORD: postgrenet # Senha do banco de dados
+        ports:
+          - "5433:5432"
+        volumes:
+          - db_data:/var/lib/postgresql/data
 
-services:
-  db:
-    image: postgres:14
-    container_name: jobconnect_postgres_db
-    restart: always
-    environment:
-      POSTGRES_DB: jobconnect_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrenet
-    ports:
-      - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Opcional: Para executar um script SQL na primeira inicialização
-
-volumes:
-  db_data:
-
+      db_data:
+    

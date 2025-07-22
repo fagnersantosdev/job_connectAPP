@@ -1,8 +1,16 @@
-// src/database/conexao.js
+    // src/database/conexao.js
     import pgPromise from 'pg-promise';
     import dotenv from 'dotenv';
 
     dotenv.config(); // Carrega as variáveis de ambiente
+
+    
+    console.log('DEBUG DB_HOST:', process.env.DB_HOST);
+    console.log('DEBUG DB_PORT:', process.env.DB_PORT);
+    console.log('DEBUG DB_DATABASE:', process.env.DB_DATABASE);
+    console.log('DEBUG DB_USER:', process.env.DB_USER);
+    
+    // --------------------------------------------------
 
     const pgp = pgPromise();
 
@@ -28,7 +36,8 @@
             console.error('Erro ao conectar ao banco de dados:', error.message || error);
         });
 
-    export default db; // Exporta a instância do banco de dados como default
+    export default db;
+    
     
 // docker exec -it jobconnect_postgres_db psql -U postgres jobconnect_db (PARA EXECUTAR O BANCO)
 // \dt (PARA LISTAR TABELAS DO BA)

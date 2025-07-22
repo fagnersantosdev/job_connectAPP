@@ -4,13 +4,14 @@ import bcrypt from 'bcrypt'; // Importe a biblioteca bcrypt
 import jwt from 'jsonwebtoken'; // Importar jsonwebtoken
 import dotenv from 'dotenv'; // Importar dotenv
 
+dotenv.config(); // Carregar as variáveis de ambiente do arquivo .env
+
 // Configuração do custo do Bcrypt. 10 é um bom valor inicial.
 const saltRounds = 10;
 
-dotenv.config(); // Carregar variáveis de ambiente
-
 const clientesControllers = {
     // --- Obter Cliente por ID ---
+    // RENOMEADO: getClientes (era getPrestadores)
     getClientes: async (req, res) => {
         const id = req.params.id;
         const result = await clientesRepository.getById(id);
@@ -27,6 +28,7 @@ const clientesControllers = {
     },
 
     // --- Obter Clientes por Nome ---
+    // RENOMEADO: getClientesByName (era getPrestadoresByName)
     getClientesByName: async (req, res) => {
         const nome = req.params.nome;
         const result = await clientesRepository.getByName(nome);
@@ -43,6 +45,7 @@ const clientesControllers = {
     },
 
     // --- Obter Todos os Clientes ---
+    // RENOMEADO: getAllClientes (era getAllPrestadores)
     getAllClientes: async (req, res) => {
         const result = await clientesRepository.getAll();
 
@@ -58,6 +61,7 @@ const clientesControllers = {
     },
 
     // --- Criar Novo Cliente ---
+    // RENOMEADO: createClientes (era createPrestadores)
     createClientes: async (req, res) => {
         // Removido 'raioAtuacao' do destructuring, pois não é campo de cliente
         const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
@@ -82,9 +86,9 @@ const clientesControllers = {
         if (!telefone || !/^\d{10,11}$/.test(telefone)) {
             erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
         }
-        if (!foto || !foto.buffer) {
-            erros.push("Foto não enviada ou inválida. Envie uma imagem no formato correto.");
-        }
+        // if (!foto || !foto.buffer) { // This check might be too strict if foto is optional or handled by multer
+        //     erros.push("Foto não enviada ou inválida. Envie uma imagem no formato correto.");
+        // }
 
         if (erros.length > 0) {
             return res.status(400).json({
@@ -123,7 +127,9 @@ const clientesControllers = {
     },
 
     // --- Atualizar Cliente ---
+    // RENOMEADO: updateCliente (era updateUser)
     updateCliente: async (req, res) => {
+        // Removido 'raioAtuacao' do destructuring
         const { id, nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
 
         // Validações
@@ -193,6 +199,7 @@ const clientesControllers = {
     },
 
     // --- Deletar Cliente ---
+    // RENOMEADO: deleteCliente (era deleteUser)
     deleteCliente: async (req, res) => {
         const id = req.params.id;
         const result = await clientesRepository.delete(id);
@@ -200,54 +207,90 @@ const clientesControllers = {
     },
 
     // --- NOVO MÉTODO: Login de Cliente ---
+    // RENOMEADO: loginCliente (era loginPrestador)
     loginCliente: async (req, res) => {
         const { email, senha } = req.body;
 
+        // Validação básica
+        if (!email || !senha) {
+            return res.status(400).json({
+                status: 400,
+                ok: false,
+                message: "Email e senha são obrigatórios."
+            });
+        }
+
         try {
-            const result = await clientesRepository.getByEmail(email);
+            // 1. Buscar o cliente pelo email para obter a senha hasheada
+            const userResult = await clientesRepository.getByEmailForLogin(email);
 
-            if (!result.ok || !result.data) {
-                return res.status(401).json({ status: 401, ok: false, message: 'Credenciais inválidas.' });
+            if (!userResult.ok || !userResult.data) {
+                // Cliente não encontrado ou erro
+                return res.status(401).json({
+                    status: 401,
+                    ok: false,
+                    message: "Email ou senha inválidos."
+                });
             }
 
-            const cliente = result.data;
+            const clienteNoBanco = userResult.data;
 
-            // Comparar a senha fornecida com o hash armazenado
-            const isMatch = await bcrypt.compare(senha, cliente.senha);
+            // 2. Comparar a senha fornecida com a senha hasheada do banco
+            const isPasswordValid = await bcrypt.compare(senha, clienteNoBanco.senha);
 
-            if (!isMatch) {
-                return res.status(401).json({ status: 401, ok: false, message: 'Credenciais inválidas.' });
-            }
+            if (isPasswordValid) {
+                // Senha correta: Gerar JWT
+                const payload = {
+                    id: clienteNoBanco.id,
+                    email: email, // Usar o email do request ou do banco, ambos devem ser o mesmo
+                    tipo: 'cliente' // Adicionar o tipo de usuário ao payload
+                };
 
-            // Senha correta: Gerar JWT
-            const payload = {
-                id: cliente.id,
-                email: cliente.email,
-                tipo: 'cliente' // Adicionar o tipo de usuário ao payload
-            };
+                // Certifique-se de que process.env.JWT_SECRET e process.env.JWT_EXPIRES_IN estão configurados no .env
+                const token = jwt.sign(payload, process.env.JWT_SECRET, {
+                    expiresIn: process.env.JWT_EXPIRES_IN // Ex: '1h'
+                });
 
-            const token = jwt.sign(payload, process.env.JWT_SECRET, {
-                expiresIn: process.env.JWT_EXPIRES_IN // Ex: '1h'
-            });
-
-            return res.status(200).json({
-                status: 200,
-                ok: true,
-                message: 'Login realizado com sucesso!',
-                data: {
-                    cliente: {
-                        id: cliente.id,
-                        nome: cliente.nome,
-                        email: cliente.email,
-                        // ... outros dados do cliente que você queira retornar (sem a senha)
-                    },
-                    token: token // Retornar o token para o cliente
+                // Buscar os dados completos do cliente (sem a senha) para retornar na resposta
+                const fullClienteResult = await clientesRepository.getById(clienteNoBanco.id);
+                if (fullClienteResult.ok) {
+                    res.status(200).json({
+                        status: 200,
+                        ok: true,
+                        message: "Login bem-sucedido!",
+                        data: {
+                            cliente: {
+                                id: fullClienteResult.data.id,
+                                nome: fullClienteResult.data.nome,
+                                email: fullClienteResult.data.email,
+                                // ... outros dados do cliente que você queira retornar (sem a senha)
+                            },
+                            token: token // Retornar o token para o cliente
+                        }
+                    });
+                } else {
+                    // Deveria ser raro, mas para garantir
+                    res.status(500).json({
+                        status: 500,
+                        ok: false,
+                        message: "Erro ao recuperar dados completos do cliente após login."
+                    });
                 }
-            });
-
+            } else {
+                // Senha incorreta
+                res.status(401).json({
+                    status: 401,
+                    ok: false,
+                    message: "Email ou senha inválidos."
+                });
+            }
         } catch (error) {
-            console.error('Erro no login do cliente:', error);
-            return res.status(500).json({ status: 500, ok: false, message: 'Erro interno do servidor.' });
+            console.error("Erro no processo de login:", error);
+            res.status(500).json({
+                status: 500,
+                ok: false,
+                message: "Erro interno do servidor durante o login."
+            });
         }
     },
 
