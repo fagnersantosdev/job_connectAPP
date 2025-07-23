@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 // Importa o logo localmente
 const logo = require('../assets/images/logo-Jobconnect.png');
+
+//Função pra mudar de página
+const router = useRouter();
+
+function handleStart() {
+  router.push('/login_cadastro');
+}
+
 
 // Paleta de cores utilizadas no app
 const COLORS = {
@@ -129,7 +138,7 @@ export default function WelcomeScreen() {
       </Text>
 
       {/* Botão de começar */}
-      <TouchableOpacity style={styles.startButton}>
+      <TouchableOpacity  onPress={handleStart} style={styles.startButton}>
         <Text style={styles.startButtonText}>Começar</Text>
       </TouchableOpacity>
 
