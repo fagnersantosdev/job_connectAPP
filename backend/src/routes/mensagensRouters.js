@@ -1,22 +1,21 @@
 import express from 'express';
 import mensagensControllers from '../controllers/mensagensControllers.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import multer from 'multer'; // Importar multer
-import path from 'path'; // Importar path para lidar com caminhos de arquivo
-import { fileURLToPath } from 'url'; // Para __dirname em módulos ES
-
+import multer from 'multer';
+import path from 'path'; // Importar path
+import { fileURLToPath } from 'url'; // Importar fileURLToPath
 
 // __dirname não está disponível em módulos ES (import/export), então precisamos recriá-lo
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '../../'); // Caminho para a raiz do projeto
+const projectRoot = path.resolve(__dirname, '../../'); // Caminho para a raiz do projeto (um nível acima de src)
 
 // Configuração do Multer para armazenamento em disco
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         // Define o diretório onde os arquivos serão salvos
         // Usamos path.join para garantir que o caminho seja correto em diferentes SOs
-        cb(null, path.join(projectRoot, 'uploads'));
+        cb(null, path.join(projectRoot, 'uploads')); // Usa o projectRoot calculado no topo
     },
     filename: (req, file, cb) => {
         // Define o nome do arquivo: timestamp + nome original

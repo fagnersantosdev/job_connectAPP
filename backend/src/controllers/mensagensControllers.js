@@ -14,7 +14,7 @@ const mensagensControllers = {
         const remetente_id = req.user.id; // ID do usuário logado (cliente ou prestador)
         const remetente_tipo = req.user.tipo; // Tipo do usuário logado (cliente ou prestador)
         const { solicitacao_id, conteudo } = req.body;
-        const file = req.file; // O arquivo da imagem (se houver, Multer já o salvou)
+        const file = req.file; // O arquivo da imagem (se houver)
 
         const erros = [];
         if (!solicitacao_id || isNaN(parseInt(solicitacao_id))) {
@@ -40,11 +40,9 @@ const mensagensControllers = {
 
         let foto_url = null;
         try {
-            // Se houver um arquivo, construa a URL para acesso público
+            // Se houver um arquivo, faça o upload para o Firebase Storage
             if (file) {
-                // A URL será baseada no caminho onde o Express está servindo arquivos estáticos
-                // Ex: http://localhost:3000/uploads/nome-do-arquivo.jpg
-                foto_url = `/uploads/${file.filename}`; // O Multer já define file.filename
+                foto_url = await uploadFileToFirebase(file);
             }
 
             // 1. Verificar se a solicitação existe e se o remetente é participante dela
@@ -173,8 +171,13 @@ const mensagensControllers = {
             return res.status(400).json({ status: 400, ok: false, message: "ID da mensagem inválido." });
         }
 
-        const userId = req.user.id;
-        const userTipo = req.user.tipo;
+        // O middleware de autenticação deve popular req.user
+        const userId = req.user.id; // CORRIGIDO: Acessando req.user.id
+        const userTipo = req.user.tipo; // CORRIGIDO: Acessando req.user.tipo
+
+        console.log(`[DEBUG - Controller] Tentando marcar mensagem ${id} como lida.`);
+        console.log(`[DEBUG - Controller] Usuário logado: ID=${userId}, Tipo=${userTipo}`);
+
 
         try {
             const mensagemResult = await mensagensRepository.getById(id);
@@ -188,7 +191,8 @@ const mensagensControllers = {
                 return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o destinatário desta mensagem." });
             }
 
-            const result = await mensagensRepository.markAsRead(id);
+            // CORRIGIDO: Passando userId e userTipo para o repositório
+            const result = await mensagensRepository.markAsRead(id, userId, userTipo);
             res.status(result.status).json(result);
         } catch (error) {
             console.error("Erro no controller ao marcar mensagem como lida:", error);

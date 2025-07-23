@@ -110,37 +110,76 @@ const mensagensRepository = {
     },
 
     /**
-     * @description Marca uma mensagem como lida.
-     * @param {number} id - O ID da mensagem a ser marcada como lida.
+     * @description Obtém uma mensagem pelo ID.
+     * @param {number} id - O ID da mensagem.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
      */
-    markAsRead: async (id) => {
-        const sql = `UPDATE mensagens SET lida=TRUE WHERE id=$1 RETURNING *;`;
+    getById: async (id) => {
+        const sql = 'SELECT m.id, m.solicitacao_id, m.remetente_id, m.remetente_tipo, m.destinatario_id, m.destinatario_tipo, ' +
+                    'm.conteudo, m.foto_url, m.data_envio, m.lida ' +
+                    'FROM mensagens m ' +
+                    'WHERE m.id=$1;';
         try {
-            const updatedMensagem = await conexao.oneOrNone(sql, [id]);
-            if (updatedMensagem) {
+            const mensagem = await conexao.oneOrNone(sql, [id]);
+            if (mensagem) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Mensagem marcada como lida com sucesso',
-                    data: updatedMensagem
+                    message: 'Mensagem encontrada com sucesso',
+                    data: mensagem
                 };
             } else {
                 return {
                     status: 404,
                     ok: false,
-                    message: 'Mensagem não encontrada para marcar como lida',
+                    message: 'Mensagem não encontrada',
                     data: null
                 };
             }
         } catch (error) {
-            console.error('Erro ao marcar mensagem como lida:', error);
+            console.error('Erro ao buscar mensagem por ID:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao marcar mensagem como lida',
+                message: 'Erro de servidor ao buscar mensagem por ID',
                 sqlMessage: error.message
             };
+        }
+    },
+
+    /**
+     * @description Marca uma mensagem como lida.
+     * @param {number} id - O ID da mensagem a ser marcada como lida.
+     * @param {number} userId - O ID do usuário logado (destinatário).
+     * @param {string} userType - O tipo do usuário logado ('cliente' ou 'prestador').
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
+     */
+    markAsRead: async (id, userId, userType) => {
+        const sql = `
+            UPDATE mensagens
+            SET lida = TRUE
+            WHERE id = $1
+            AND destinatario_id = $2
+            AND destinatario_tipo = $3
+            RETURNING *;
+        `;
+        console.log(`[DEBUG - Repository] Executando UPDATE para mensagem ${id}.`);
+        console.log(`[DEBUG - Repository] Destinatário esperado: ID=${userId}, Tipo=${userType}`);
+        console.log(`[DEBUG - Repository] SQL: ${sql}`);
+        console.log(`[DEBUG - Repository] Parâmetros: [${id}, ${userId}, ${userType}]`);
+
+        try {
+            const updatedMensagem = await conexao.oneOrNone(sql, [id, userId, userType]);
+            if (updatedMensagem) {
+                console.log(`[DEBUG - Repository] Mensagem ${id} marcada como lida com sucesso.`);
+                return { status: 200, ok: true, message: "Mensagem marcada como lida com sucesso", data: updatedMensagem };
+            } else {
+                console.warn(`[DEBUG - Repository] Mensagem ${id} não encontrada ou usuário ${userId} não é o destinatário.`);
+                return { status: 404, ok: false, message: "Mensagem não encontrada ou você não é o destinatário." };
+            }
+        } catch (error) {
+            console.error(`[DEBUG - Repository] Erro ao marcar mensagem ${id} como lida:`, error.message || error);
+            return { status: 500, ok: false, message: "Erro de servidor ao marcar mensagem como lida", sqlMessage: error.message };
         }
     },
 
