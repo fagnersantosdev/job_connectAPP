@@ -32,7 +32,11 @@
         numero VARCHAR(10),
         foto BYTEA,
         raioAtuacao NUMERIC(10, 2),
+        status_disponibilidade VARCHAR(20) DEFAULT 'online',
         data_cadastro TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP );
+
+    INSERT INTO prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade) VALUES ('Carlos Eletricista', '11223344556', 'carlos.eletricista@example.com', '$2b$10$E.g.a.hash.string.here.for.password',   '21976543210', '20001000', 'Próximo à praça', '30', NULL, 10.5, 'online'),
+    ('Maria Faxineira', '66554433221', 'maria.faxineira@example.com', '$2b$10$Another.hash.string.here.for.password',   '11965432109', '01001000', 'Apt. 202', '100', NULL, 5.0, 'online');
 
     -- Tabela categorias_servico
     CREATE TABLE categorias_servico (
@@ -42,14 +46,16 @@
     );
 
     -- Tabela servicos_oferecidos
-    CREATE TABLE servicos_oferecidos (
+    CREATE TABLE IF NOT EXISTS servicos_oferecidos (
         id SERIAL PRIMARY KEY,
-        prestador_id INTEGER NOT NULL,
-        categoria_id INTEGER NOT NULL,
+        prestador_id INTEGER NOT NULL REFERENCES prestadores(id) ON DELETE CASCADE,
+        categoria_id INTEGER NOT NULL REFERENCES categorias_servico(id) ON DELETE RESTRICT,
         titulo VARCHAR(100) NOT NULL,
         descricao TEXT,
-        valor_estimado NUMERIC(10, 2),
-        disponibilidade VARCHAR(255),
+        valor_estimado DECIMAL(10, 2),
+        -- Garanta que estas colunas existam:
+        ativo BOOLEAN DEFAULT TRUE,
+        disponibilidade VARCHAR(50) DEFAULT 'disponivel', -- Ex: 'disponivel', 'ocupado', 'ausente'
         data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
@@ -62,6 +68,12 @@
             REFERENCES categorias_servico(id)
             ON DELETE RESTRICT
     );
+
+    -- Adicionar índices para otimização de busca
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_prestador_id ON servicos_oferecidos (prestador_id);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_categoria_id ON servicos_oferecidos (categoria_id);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_ativo ON servicos_oferecidos (ativo);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_disponibilidade ON servicos_oferecidos (disponibilidade); -- NOVO: Índice para disponibilidade
 
     -- Inserir dados de exemplo (gerar os hashes Bcrypt para as senhas)
     INSERT INTO clientes (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto) VALUES

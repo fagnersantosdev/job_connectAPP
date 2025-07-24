@@ -1,26 +1,26 @@
 import express from 'express';
 import servicosOferecidosControllers from '../controllers/servicosOferecidosControllers.js';
-import authMiddleware from '../middlewares/authMiddleware.js'; // Caminho ajustado para middleware
+import authMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// --- Rotas para Serviços Oferecidos ---
-// Algumas rotas podem ser públicas para consulta, outras protegidas para criação/edição.
-// Ajuste a proteção (authMiddleware) conforme a necessidade do seu app.
+// Rotas para Serviços Oferecidos
 
-// GET / - Obtém todos os serviços (pode ter filtros por query params) - Pode ser público ou protegido
-router.get('/', servicosOferecidosControllers.getAllServicosOferecidos); // Exemplo: Público para listagem
+// POST /servicos-oferecidos - Criar um novo serviço oferecido (apenas prestadores)
+router.post('/', authMiddleware, servicosOferecidosControllers.createServicoOferecido);
 
-// GET /:id - Obtém um serviço específico pelo ID - Pode ser público ou protegido
-router.get('/:id', servicosOferecidosControllers.getServicosOferecidoById); // Exemplo: Público para detalhes
+// GET /servicos-oferecidos - Obter todos os serviços oferecidos (com filtros opcionais)
+// Pode ser acessado por qualquer um (público)
+router.get('/', servicosOferecidosControllers.getAllServicosOferecidos);
 
-// POST / - Cria um novo serviço - GERALMENTE PROTEGIDO (apenas prestadores logados)
-router.post('/', authMiddleware, servicosOferecidosControllers.createServicosOferecido);
+// GET /servicos-oferecidos/:id - Obter um serviço oferecido por ID
+// Pode ser acessado por qualquer um (público)
+router.get('/:id', servicosOferecidosControllers.getServicoOferecidoById);
 
-// PUT /:id - Atualiza um serviço existente - GERALMENTE PROTEGIDO (apenas o prestador dono)
-router.put('/:id', authMiddleware, servicosOferecidosControllers.updateServicosOferecido);
+// PUT /servicos-oferecidos/:id - Atualizar um serviço oferecido (apenas o prestador dono)
+router.put('/:id', authMiddleware, servicosOferecidosControllers.updateServicoOferecido);
 
-// DELETE /:id - Deleta um serviço - GERALMENTE PROTEGIDO (apenas o prestador dono)
-router.delete('/:id', authMiddleware, servicosOferecidosControllers.deleteServicosOferecido);
+// DELETE /servicos-oferecidos/:id - Deletar um serviço oferecido (apenas o prestador dono)
+router.delete('/:id', authMiddleware, servicosOferecidosControllers.deleteServicoOferecido);
 
 export default router;

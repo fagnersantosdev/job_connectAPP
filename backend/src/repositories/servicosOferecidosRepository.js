@@ -2,71 +2,62 @@ import conexao from "../database/conexao.js"; // Sua instância do pg-promise
 
 const servicosOferecidosRepository = {
     /**
-     * @description Obtém todos os serviços oferecidos, opcionalmente filtrando por ID de prestador ou categoria.
-     * @param {Object} filtros - Objeto opcional com filtros (ex: { prestador_id: 1, categoria_id: 2 }).
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>} Objeto de resposta padronizado.
+     * @description Cria um novo serviço oferecido por um prestador.
+     * @param {Object} obj - Dados do serviço (prestador_id, categoria_id, titulo, descricao, valor_estimado, ativo, disponibilidade).
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|string}>} Objeto de resposta padronizado.
      */
-    getAll: async (filtros = {}) => {
-        let sql = 'SELECT so.id, so.prestador_id, so.categoria_id, so.titulo, so.descricao, so.valor_estimado, so.disponibilidade, ' +
-                  'p.nome AS nome_prestador, p.foto AS foto_prestador, ' + // Dados do prestador
-                  'c.nome AS nome_categoria, c.icone_url AS icone_categoria ' + // Dados da categoria
-                  'FROM servicos_oferecidos so ' +
-                  'JOIN prestadores p ON so.prestador_id = p.id ' +
-                  'JOIN categorias_servico c ON so.categoria_id = c.id';
-        const params = [];
-        const conditions = [];
-        let paramCount = 1;
-
-        if (filtros.prestador_id) {
-            conditions.push(`so.prestador_id = $${paramCount++}`);
-            params.push(filtros.prestador_id);
-        }
-        if (filtros.categoria_id) {
-            conditions.push(`so.categoria_id = $${paramCount++}`);
-            params.push(filtros.categoria_id);
-        }
-        if (filtros.titulo) { // Busca por título (ILIKE para case-insensitive)
-            conditions.push(`so.titulo ILIKE $${paramCount++}`);
-            params.push(`%${filtros.titulo}%`);
-        }
-
-        if (conditions.length > 0) {
-            sql += ' WHERE ' + conditions.join(' AND ');
-        }
-        sql += ' ORDER BY so.data_criacao DESC;'; // Ordena pelos mais recentes
-
+    create: async (obj) => {
+        // Incluído 'ativo' no INSERT
+        const sql = `INSERT INTO servicos_oferecidos (prestador_id, categoria_id, titulo, descricao, valor_estimado, ativo, disponibilidade)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`;
         try {
-            const list = await conexao.any(sql, params);
+            const newServico = await conexao.one(sql, [
+                obj.prestador_id,
+                obj.categoria_id,
+                obj.titulo,
+                obj.descricao,
+                obj.valor_estimado,
+                obj.ativo, // Passando o valor de 'ativo'
+                obj.disponibilidade
+            ]);
             return {
-                status: 200,
+                status: 201,
                 ok: true,
-                message: 'Lista de serviços oferecidos obtida com sucesso',
-                data: list
+                message: 'Serviço oferecido criado com sucesso',
+                data: newServico
             };
         } catch (error) {
-            console.error('Erro ao buscar serviços oferecidos:', error);
+            console.error('Erro ao criar serviço oferecido:', error);
+            if (error.code === '23503') { // foreign_key_violation (prestador_id ou categoria_id inválida)
+                return {
+                    status: 400,
+                    ok: false,
+                    message: 'ID de prestador ou categoria inválido(a).',
+                    sqlMessage: error.message
+                };
+            }
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao buscar serviços oferecidos',
+                message: 'Erro de servidor ao criar serviço oferecido',
                 sqlMessage: error.message
             };
         }
     },
 
     /**
-     * @description Obtém um serviço oferecido pelo ID.
-     * @param {number} id - O ID do serviço.
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
+     * @description Obtém um serviço oferecido por ID.
+     * @param {number} id - O ID do serviço oferecido.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
      */
     getById: async (id) => {
-        const sql = 'SELECT so.id, so.prestador_id, so.categoria_id, so.titulo, so.descricao, so.valor_estimado, so.disponibilidade, ' +
-                    'p.nome AS nome_prestador, p.foto AS foto_prestador, ' +
-                    'c.nome AS nome_categoria, c.icone_url AS icone_categoria ' +
-                    'FROM servicos_oferecidos so ' +
-                    'JOIN prestadores p ON so.prestador_id = p.id ' +
-                    'JOIN categorias_servico c ON so.categoria_id = c.id ' +
-                    'WHERE so.id=$1;';
+        // Incluído 'so.ativo' no SELECT
+        const sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
+                     c.nome AS nome_categoria, c.icone_url AS icone_categoria
+                     FROM servicos_oferecidos so
+                     JOIN prestadores p ON so.prestador_id = p.id
+                     JOIN categorias_servico c ON so.categoria_id = c.id
+                     WHERE so.id = $1;`;
         try {
             const servico = await conexao.oneOrNone(sql, [id]);
             if (servico) {
@@ -96,43 +87,61 @@ const servicosOferecidosRepository = {
     },
 
     /**
-     * @description Cria um novo serviço oferecido.
-     * @param {Object} obj - Objeto contendo os dados do serviço (prestador_id, categoria_id, titulo, descricao, valor_estimado, disponibilidade).
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|string}>} Objeto de resposta padronizado.
+     * @description Obtém todos os serviços oferecidos, com filtros opcionais.
+     * @param {Object} filtros - Objeto com filtros (prestador_id, categoria_id, ativo, titulo, disponibilidade).
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>}
      */
-    create: async (obj) => {
-        const sql = `INSERT INTO servicos_oferecidos (prestador_id, categoria_id, titulo, descricao, valor_estimado, disponibilidade)
-                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`;
+    getAll: async (filtros = {}) => {
+        // Incluído 'so.ativo' no SELECT
+        let sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
+                   c.nome AS nome_categoria, c.icone_url AS icone_categoria
+                   FROM servicos_oferecidos so
+                   JOIN prestadores p ON so.prestador_id = p.id
+                   JOIN categorias_servico c ON so.categoria_id = c.id`;
+        const params = [];
+        const conditions = [];
+        let paramCount = 1;
+
+        if (filtros.prestador_id) {
+            conditions.push(`so.prestador_id = $${paramCount++}`);
+            params.push(filtros.prestador_id);
+        }
+        if (filtros.categoria_id) {
+            conditions.push(`so.categoria_id = $${paramCount++}`);
+            params.push(filtros.categoria_id);
+        }
+        if (filtros.ativo !== undefined) { // Filtro por status 'ativo'
+            conditions.push(`so.ativo = $${paramCount++}`);
+            params.push(filtros.ativo);
+        }
+        if (filtros.titulo) { // Busca por título (ILIKE para case-insensitive)
+            conditions.push(`so.titulo ILIKE $${paramCount++}`);
+            params.push(`%${filtros.titulo}%`);
+        }
+        if (filtros.disponibilidade) { // Filtro por disponibilidade
+            conditions.push(`so.disponibilidade = $${paramCount++}`);
+            params.push(filtros.disponibilidade);
+        }
+
+        if (conditions.length > 0) {
+            sql += ' WHERE ' + conditions.join(' AND ');
+        }
+        sql += ' ORDER BY so.data_criacao DESC;'; // Ordena pelos mais recentes
+
         try {
-            const newServico = await conexao.one(sql, [
-                obj.prestador_id,
-                obj.categoria_id,
-                obj.titulo,
-                obj.descricao,
-                obj.valor_estimado,
-                obj.disponibilidade
-            ]);
+            const list = await conexao.any(sql, params);
             return {
-                status: 201, // 201 Created
+                status: 200,
                 ok: true,
-                message: 'Serviço oferecido criado com sucesso',
-                data: newServico
+                message: 'Lista de serviços oferecidos obtida com sucesso',
+                data: list
             };
         } catch (error) {
-            console.error('Erro ao criar serviço oferecido:', error);
-            // Pode haver erros de FK (prestador_id ou categoria_id inexistente)
-            if (error.code === '23503') { // foreign_key_violation
-                return {
-                    status: 400,
-                    ok: false,
-                    message: 'ID de prestador ou categoria inválido(a).',
-                    sqlMessage: error.message
-                };
-            }
+            console.error('Erro ao buscar serviços oferecidos:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao criar serviço oferecido',
+                message: 'Erro de servidor ao buscar serviços oferecidos',
                 sqlMessage: error.message
             };
         }
@@ -145,20 +154,48 @@ const servicosOferecidosRepository = {
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
      */
     update: async (id, obj) => {
-        const sql = `UPDATE servicos_oferecidos SET
-                     prestador_id=$1, categoria_id=$2, titulo=$3, descricao=$4, valor_estimado=$5, disponibilidade=$6,
-                     data_atualizacao=CURRENT_TIMESTAMP
-                     WHERE id=$7 RETURNING *;`;
+        const fields = [];
+        const params = [id]; // O primeiro parâmetro é o ID para o WHERE
+        let paramCount = 2; // Começa a contagem para os campos a serem atualizados
+
+        if (obj.prestador_id !== undefined) { // Embora o prestador_id não deva ser alterado via UPDATE, mantido para flexibilidade se necessário
+            fields.push(`prestador_id = $${paramCount++}`);
+            params.push(obj.prestador_id);
+        }
+        if (obj.categoria_id !== undefined) {
+            fields.push(`categoria_id = $${paramCount++}`);
+            params.push(obj.categoria_id);
+        }
+        if (obj.titulo !== undefined) {
+            fields.push(`titulo = $${paramCount++}`);
+            params.push(obj.titulo);
+        }
+        if (obj.descricao !== undefined) {
+            fields.push(`descricao = $${paramCount++}`);
+            params.push(obj.descricao);
+        }
+        if (obj.valor_estimado !== undefined) {
+            fields.push(`valor_estimado = $${paramCount++}`);
+            params.push(obj.valor_estimado);
+        }
+        if (obj.ativo !== undefined) { // Incluído 'ativo' no UPDATE
+            fields.push(`ativo = $${paramCount++}`);
+            params.push(obj.ativo);
+        }
+        if (obj.disponibilidade !== undefined) { // Incluído 'disponibilidade' no UPDATE
+            fields.push(`disponibilidade = $${paramCount++}`);
+            params.push(obj.disponibilidade);
+        }
+
+        if (fields.length === 0) {
+            return { status: 400, ok: false, message: "Nenhum campo para atualizar fornecido." };
+        }
+
+        // Adiciona data_atualizacao automaticamente
+        const sql = `UPDATE servicos_oferecidos SET ${fields.join(', ')}, data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *;`;
+
         try {
-            const updatedServico = await conexao.oneOrNone(sql, [
-                obj.prestador_id,
-                obj.categoria_id,
-                obj.titulo,
-                obj.descricao,
-                obj.valor_estimado,
-                obj.disponibilidade,
-                id
-            ]);
+            const updatedServico = await conexao.oneOrNone(sql, params);
             if (updatedServico) {
                 return {
                     status: 200,

@@ -1,5 +1,23 @@
 testar o servidor na máquina 2
 instalar o postmam para testar as APIs (https://www.postman.com/downloads/)
 
-Criar cliente no banco da máquina 1
-2 | Paula Santos | 07512548725 | paulasantos@email.com | $2b$10$dzZtJ345k9qwlxztmXCmaOmv.UXBJ5lpkZ2AVqKYgKBt0ff8krX1S | 21999101125 | 27323000 | Apto 105    | 120    |      | 2025-07-23 10:35:59.5628+00
+Criar tabela no banco da máquina 2
+CREATE TABLE IF NOT EXISTS servicos_oferecidos (
+        id SERIAL PRIMARY KEY,
+        prestador_id INTEGER NOT NULL REFERENCES prestadores(id) ON DELETE CASCADE,
+        categoria_id INTEGER NOT NULL REFERENCES categorias_servico(id) ON DELETE RESTRICT,
+        titulo VARCHAR(100) NOT NULL,
+        descricao TEXT,
+        valor_estimado DECIMAL(10, 2),
+        -- Garanta que estas colunas existam:
+        ativo BOOLEAN DEFAULT TRUE,
+        disponibilidade VARCHAR(50) DEFAULT 'disponivel', -- Ex: 'disponivel', 'ocupado', 'ausente'
+        data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Adicionar índices para otimização de busca
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_prestador_id ON servicos_oferecidos (prestador_id);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_categoria_id ON servicos_oferecidos (categoria_id);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_ativo ON servicos_oferecidos (ativo);
+    CREATE INDEX IF NOT EXISTS idx_servicos_oferecidos_disponibilidade ON servicos_oferecidos (disponibilidade);

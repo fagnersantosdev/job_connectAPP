@@ -1,0 +1,719 @@
+# backend/src/docs/swagger.yaml
+openapi: 3.0.0
+info:
+  title: JobConnect API
+  version: 1.0.0
+  description: Documentação da API do backend do JobConnect, para conectar clientes e prestadores de serviços.
+servers:
+  - url: http://localhost:3000
+    description: Servidor de Desenvolvimento Local
+
+tags:
+  - name: Autenticação
+    description: Rotas para login de clientes e prestadores
+  - name: Clientes
+    description: Operações relacionadas a clientes
+  - name: Prestadores
+    description: Operações relacionadas a prestadores
+  - name: Categorias
+    description: Gerenciamento de categorias de serviço
+  - name: Solicitações de Serviço
+    description: Gerenciamento de solicitações de serviço
+  - name: Mensagens
+    description: Troca de mensagens entre clientes e prestadores
+  - name: Avaliações
+    description: Avaliações de serviços
+
+paths:
+  /clientes/login:
+    post:
+      operationId: loginCliente
+      tags:
+        - Autenticação
+      summary: Login de Cliente
+      description: Autentica um cliente e retorna um token JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: joana.silva@email.com
+                senha:
+                  type: string
+                  format: password
+                  example: testepassword123
+      responses:
+        '200':
+          description: Login bem-sucedido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 200
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Login bem-sucedido!
+                  data:
+                    type: object
+                    properties:
+                      cliente:
+                        $ref: '#/components/schemas/ClienteLoginResponse'
+                      token:
+                        type: string
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: Campos obrigatórios ausentes.
+        '401':
+          description: Email ou senha inválidos.
+        '500':
+          description: Erro interno do servidor.
+
+  /prestadores/login:
+    post:
+      tags:
+        - Autenticação
+      summary: Login de Prestador
+      description: Autentica um prestador e retorna um token JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: roberto.reparos@email.com
+                senha:
+                  type: string
+                  format: password
+                  example: testepassword123
+      responses:
+        '200':
+          description: Login bem-sucedido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 200
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Login bem-sucedido!
+                  data:
+                    type: object
+                    properties:
+                      prestador:
+                        $ref: '#/components/schemas/PrestadorLoginResponse'
+                      token:
+                        type: string
+                        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: Campos obrigatórios ausentes.
+        '401':
+          description: Email ou senha inválidos.
+        '500':
+          description: Erro interno do servidor.
+
+  /categorias:
+    get:
+      tags:
+        - Categorias
+      summary: Obter todas as categorias
+      description: Retorna uma lista de todas as categorias de serviço disponíveis.
+      responses:
+        '200':
+          description: Lista de categorias obtida com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 200
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lista de categorias obtida com sucesso
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Categoria'
+        '500':
+          description: Erro interno do servidor.
+
+  /solicitacoes:
+    post:
+      tags:
+        - Solicitações de Serviço
+      summary: Criar nova solicitação de serviço
+      description: Cria uma nova solicitação de serviço por um cliente. Requer autenticação de cliente.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoInput'
+      responses:
+        '201':
+          description: Solicitação criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solicitacao'
+        '400':
+          description: Dados inválidos.
+        '401':
+          description: Não autorizado (token ausente ou inválido).
+        '500':
+          description: Erro interno do servidor.
+
+  /solicitacoes/{id}:
+    put:
+      tags:
+        - Solicitações de Serviço
+      summary: Atualizar status ou aceitar solicitação
+      description: Atualiza o status de uma solicitação de serviço. Usado por prestadores para aceitar. Requer autenticação.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da solicitação de serviço.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoUpdateInput'
+      responses:
+        '200':
+          description: Solicitação atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solicitacao'
+        '400':
+          description: Dados inválidos ou status inválido.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado.
+        '404':
+          description: Solicitação não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+  /mensagens:
+    post:
+      tags:
+        - Mensagens
+      summary: Enviar nova mensagem
+      description: Envia uma nova mensagem dentro de uma solicitação de serviço. Suporta texto e/ou foto. Requer autenticação.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MensagemInput'
+          multipart/form-data: # Para upload de arquivos
+            schema:
+              type: object
+              properties:
+                solicitacao_id:
+                  type: integer
+                  example: 1
+                conteudo:
+                  type: string
+                  example: "Olá, veja a foto do local."
+                foto:
+                  type: string
+                  format: binary # Indica que é um arquivo
+      responses:
+        '201':
+          description: Mensagem enviada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+        '400':
+          description: Dados inválidos.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado (não é participante da solicitação).
+        '404':
+          description: Solicitação não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+  /mensagens/solicitacao/{solicitacao_id}:
+    get:
+      tags:
+        - Mensagens
+      summary: Listar mensagens por solicitação
+      description: Retorna todas as mensagens para uma solicitação de serviço específica. Requer autenticação e ser participante da solicitação.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: solicitacao_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da solicitação de serviço.
+      responses:
+        '200':
+          description: Lista de mensagens obtida com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 200
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Lista de mensagens obtida com sucesso
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mensagem'
+        '400':
+          description: ID da solicitação inválido.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado (não é participante da solicitação).
+        '404':
+          description: Solicitação não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+  /mensagens/{id}/read:
+    put:
+      tags:
+        - Mensagens
+      summary: Marcar mensagem como lida
+      description: Marca uma mensagem específica como lida. Apenas o destinatário da mensagem pode fazer isso. Requer autenticação.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da mensagem.
+      responses:
+        '200':
+          description: Mensagem marcada como lida com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mensagem'
+        '400':
+          description: ID da mensagem inválido.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado (não é o destinatário da mensagem).
+        '404':
+          description: Mensagem não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+  /avaliacoes:
+    post:
+      tags:
+        - Avaliações
+      summary: Criar nova avaliação
+      description: Cria uma nova avaliação para um serviço concluído. Apenas o cliente da solicitação pode avaliar. Requer autenticação de cliente.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvaliacaoInput'
+      responses:
+        '201':
+          description: Avaliação criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Avaliacao'
+        '400':
+          description: Dados inválidos ou solicitação não concluída.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado (não é o cliente da solicitação).
+        '404':
+          description: Solicitação não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+  /avaliacoes/{id}:
+    delete:
+      tags:
+        - Avaliações
+      summary: Deletar avaliação
+      description: Deleta uma avaliação específica. Apenas o cliente que a criou pode deletar. Requer autenticação de cliente.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da avaliação.
+      responses:
+        '200':
+          description: Avaliação deletada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 200
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Avaliação deletada com sucesso
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+        '400':
+          description: ID da avaliação inválido.
+        '401':
+          description: Não autorizado.
+        '403':
+          description: Acesso negado (não é o cliente que criou a avaliação).
+        '404':
+          description: Avaliação não encontrada.
+        '500':
+          description: Erro interno do servidor.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Cliente:
+      type: object
+      required:
+        - nome
+        - email
+        - senha
+        - telefone
+        - cep
+      properties:
+        id:
+          type: integer
+          readOnly: true # Indica que é gerado pelo servidor
+          example: 1
+        nome:
+          type: string
+          description: Nome completo do cliente.
+          minLength: 3
+          maxLength: 100
+          example: Joana Silva
+        cpf_cnpj:
+          type: string
+          description: CPF ou CNPJ do cliente (único).
+          pattern: '^\d{11}$|^\d{14}$' # Regex para 11 ou 14 dígitos
+          example: '11122233344'
+        email:
+          type: string
+          format: email
+          description: Endereço de email do cliente (único).
+          example: joana.silva@email.com
+        senha:
+          type: string
+          format: password
+          writeOnly: true # Indica que este campo só é para escrita (não é retornado)
+          description: Senha do cliente (hash Bcrypt no banco).
+          minLength: 8
+          example: testepassword123
+        telefone:
+          type: string
+          description: Telefone de contato do cliente.
+          example: '21987654321'
+        cep:
+          type: string
+          description: CEP do endereço do cliente.
+          pattern: '^\d{8}$'
+          example: '20000000'
+        complemento:
+          type: string
+          nullable: true
+          description: Complemento do endereço.
+          example: Apto 505
+        numero:
+          type: string
+          nullable: true
+          description: Número do imóvel.
+          example: '500'
+        foto:
+          type: string
+          format: binary # Ou format: url se for uma URL para a foto
+          nullable: true
+          description: Foto de perfil do cliente (bytes ou URL).
+        data_cadastro:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Data e hora do cadastro do cliente.
+          example: 2025-07-22T22:58:28.037Z
+
+    ClienteLoginResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Joana Silva
+        email:
+          type: string
+          example: joana.silva@email.com
+    PrestadorLoginResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Roberto Reparos
+        email:
+          type: string
+          example: roberto.reparos@email.com
+    Categoria:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Encanamento
+        icone_url:
+          type: string
+          format: url
+          example: https://example.com/icon_encanamento.png
+    SolicitacaoInput:
+      type: object
+      required:
+        - servico_oferecido_id
+        - data_preferencial
+        - descricao_cliente
+      properties:
+        servico_oferecido_id:
+          type: integer
+          example: 1
+        data_preferencial:
+          type: string
+          format: date-time
+          example: 2025-08-01T10:00:00Z
+        descricao_cliente:
+          type: string
+          example: Preciso de um encanador para consertar um vazamento na pia da cozinha.
+    SolicitacaoUpdateInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pendente, aceita, recusada, concluida, cancelada]
+          example: aceita
+        valor_proposto:
+          type: number
+          format: float
+          example: 250.00
+        prestador_id_aceito:
+          type: integer
+          example: 1
+    Solicitacao:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        cliente_id:
+          type: integer
+          example: 1
+        servico_oferecido_id:
+          type: integer
+          example: 1
+        data_solicitacao:
+          type: string
+          format: date-time
+          example: 2025-07-22T22:58:28.037Z
+        data_preferencial:
+          type: string
+          format: date-time
+          example: 2025-08-01T10:00:00.000Z
+        descricao_cliente:
+          type: string
+          example: Preciso trocar as tomadas da minha casa.
+        status:
+          type: string
+          enum: [pendente, aceita, recusada, concluida, cancelada]
+          example: aceita
+        valor_proposto:
+          type: number
+          format: float
+          example: 250.00
+        prestador_id_aceito:
+          type: integer
+          example: 1
+        data_aceitacao:
+          type: string
+          format: date-time
+          example: 2025-07-22T23:03:13.262Z
+        data_conclusao:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+    MensagemInput:
+      type: object
+      required:
+        - solicitacao_id
+      properties:
+        solicitacao_id:
+          type: integer
+          example: 1
+        conteudo:
+          type: string
+          example: "Olá! Consegue vir amanhã às 10h?"
+    Mensagem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        solicitacao_id:
+          type: integer
+          example: 1
+        remetente_id:
+          type: integer
+          example: 1
+        remetente_tipo:
+          type: string
+          enum: [cliente, prestador]
+          example: cliente
+        destinatario_id:
+          type: integer
+          example: 1
+        destinatario_tipo:
+          type: string
+          enum: [cliente, prestador]
+          example: prestador
+        conteudo:
+          type: string
+          nullable: true
+          example: "Olá! Consegue vir amanhã às 10h?"
+        foto_url:
+          type: string
+          format: url
+          nullable: true
+          example: http://localhost:3000/uploads/1678901234567-minha_foto.jpg
+        data_envio:
+          type: string
+          format: date-time
+          example: 2025-07-22T23:10:05.089Z
+        lida:
+          type: boolean
+          example: false
+    AvaliacaoInput:
+      type: object
+      required:
+        - solicitacao_id
+        - nota
+      properties:
+        solicitacao_id:
+          type: integer
+          example: 1
+        nota:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comentario:
+          type: string
+          nullable: true
+          example: Serviço excelente! Prestador muito profissional.
+    Avaliacao:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        solicitacao_id:
+          type: integer
+          example: 1
+        cliente_id:
+          type: integer
+          example: 1
+        prestador_id:
+          type: integer
+          example: 1
+        nota:
+          type: integer
+          example: 5
+        comentario:
+          type: string
+          example: Serviço excelente! Prestador muito profissional e resolveu o problema rapidamente.
+        data_avaliacao:
+          type: string
+          format: date-time
+          example: 2025-07-23T01:17:19.323Z
