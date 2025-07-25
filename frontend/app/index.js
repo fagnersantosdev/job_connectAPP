@@ -44,7 +44,7 @@ const SIZES = {
   loginFontSize: 14,
 
   // Tamanho da fonte do texto no rodapé
-  footerFontSize: 12,
+  footerFontSize: 13,
 
   // Espaçamento horizontal geral da tela
   paddingHorizontal: 20,
@@ -144,7 +144,7 @@ export default function WelcomeScreen() {
 
       {/* Texto de rodapé */}
       <Text style={styles.footerText}>
-        "JobConnect – Conectando serviços, facilitando sua vida!"
+        "JobConnect – Conectando serviços, {'\n'}facilitando sua vida!"
       </Text>
     </View>
   );
