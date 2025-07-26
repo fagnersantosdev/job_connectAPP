@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const saltRounds = 10;
 
-const prestadoresController = {
+const prestadoresControllers = {
     // --- Obter Prestador por ID ---
     getPrestadores: async (req, res) => {
         const id = req.params.id;
@@ -57,7 +57,8 @@ const prestadoresController = {
 
     // --- Criar Novo Prestador ---
     createPrestadores: async (req, res) => {
-        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade } = req.body; // Adicionado status_disponibilidade
+        // Adicionado latitude e longitude ao destructuring
+        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade, latitude, longitude } = req.body;
 
         // Validações
         const erros = [];
@@ -79,11 +80,18 @@ const prestadoresController = {
         if (!telefone || !/^\d{10,11}$/.test(telefone)) {
             erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
         }
-        if (foto && !foto.buffer) { // A foto é opcional no DDL, então a validação deve ser flexível
+        if (foto && !foto.buffer) {
             erros.push("Foto inválida. Envie uma imagem no formato correto.");
         }
         if (status_disponibilidade && !['online', 'offline', 'ocupado'].includes(status_disponibilidade.toLowerCase())) {
             erros.push("Status de disponibilidade inválido. Use 'online', 'offline' ou 'ocupado'.");
+        }
+        // Validação de latitude e longitude (opcional, mas recomendado)
+        if (latitude !== undefined && (isNaN(parseFloat(latitude)) || parseFloat(latitude) < -90 || parseFloat(latitude) > 90)) {
+            erros.push("Latitude inválida. Deve ser um número entre -90 e 90.");
+        }
+        if (longitude !== undefined && (isNaN(parseFloat(longitude)) || parseFloat(longitude) < -180 || parseFloat(longitude) > 180)) {
+            erros.push("Longitude inválida. Deve ser um número entre -180 e 180.");
         }
 
 
@@ -109,7 +117,9 @@ const prestadoresController = {
                 foto: foto ? foto.buffer : null,
                 raioAtuacao: raioAtuacao,
                 telefone: telefone,
-                status_disponibilidade: status_disponibilidade ? status_disponibilidade.toLowerCase() : 'online' // Define padrão se não fornecido
+                status_disponibilidade: status_disponibilidade ? status_disponibilidade.toLowerCase() : 'online',
+                latitude: latitude !== undefined ? parseFloat(latitude) : null, // Converte para float ou null
+                longitude: longitude !== undefined ? parseFloat(longitude) : null // Converte para float ou null
             };
 
             const result = await prestadoresRepository.create(novo);
@@ -126,16 +136,16 @@ const prestadoresController = {
 
     // --- Atualizar Prestador ---
     updateUser: async (req, res) => {
-        const id = parseInt(req.params.id); // ID do prestador a ser atualizado
-        const prestador_id_logado = req.user.id; // ID do prestador logado (do JWT)
+        const id = parseInt(req.params.id);
+        const prestador_id_logado = req.user.id;
         const prestador_tipo_logado = req.user.tipo;
 
-        // Apenas o próprio prestador pode atualizar seus dados
         if (prestador_tipo_logado !== 'prestador' || id !== prestador_id_logado) {
             return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para atualizar este prestador." });
         }
 
-        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade } = req.body; // Adicionado status_disponibilidade
+        // Adicionado latitude e longitude ao destructuring
+        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade, latitude, longitude } = req.body;
 
         // Validações
         const erros = [];
@@ -157,6 +167,13 @@ const prestadoresController = {
         if (status_disponibilidade && !['online', 'offline', 'ocupado'].includes(status_disponibilidade.toLowerCase())) {
             erros.push("Status de disponibilidade inválido. Use 'online', 'offline' ou 'ocupado'.");
         }
+        // Validação de latitude e longitude (opcional, mas recomendado)
+        if (latitude !== undefined && (isNaN(parseFloat(latitude)) || parseFloat(latitude) < -90 || parseFloat(latitude) > 90)) {
+            erros.push("Latitude inválida. Deve ser um número entre -90 e 90.");
+        }
+        if (longitude !== undefined && (isNaN(parseFloat(longitude)) || parseFloat(longitude) < -180 || parseFloat(longitude) > 180)) {
+            erros.push("Longitude inválida. Deve ser um número entre -180 e 180.");
+        }
 
         if (erros.length > 0) {
             return res.status(400).json({
@@ -177,12 +194,13 @@ const prestadoresController = {
             if (numero !== undefined) updatedData.numero = numero;
             if (foto !== undefined) updatedData.foto = foto ? foto.buffer : null;
             if (raioAtuacao !== undefined) updatedData.raioAtuacao = raioAtuacao;
-            if (status_disponibilidade !== undefined) updatedData.status_disponibilidade = status_disponibilidade.toLowerCase(); // Atualiza o novo campo
+            if (status_disponibilidade !== undefined) updatedData.status_disponibilidade = status_disponibilidade.toLowerCase();
+            if (latitude !== undefined) updatedData.latitude = parseFloat(latitude); // Converte para float
+            if (longitude !== undefined) updatedData.longitude = parseFloat(longitude); // Converte para float
 
             if (senha) {
                 updatedData.senha = await bcrypt.hash(senha, saltRounds);
             } else {
-                // Se a senha não foi fornecida, busque a senha atual do banco de dados
                 const currentPrestadorResult = await prestadoresRepository.getById(id);
                 if (currentPrestadorResult.ok && currentPrestadorResult.data) {
                     updatedData.senha = currentPrestadorResult.data.senha;
@@ -213,7 +231,6 @@ const prestadoresController = {
         const prestador_id_logado = req.user.id;
         const prestador_tipo_logado = req.user.tipo;
 
-        // Apenas o próprio prestador pode deletar sua conta
         if (prestador_tipo_logado !== 'prestador' || id !== prestador_id_logado) {
             return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para deletar este prestador." });
         }
@@ -270,7 +287,9 @@ const prestadoresController = {
                                 id: fullPrestadorResult.data.id,
                                 nome: fullPrestadorResult.data.nome,
                                 email: fullPrestadorResult.data.email,
-                                status_disponibilidade: fullPrestadorResult.data.status_disponibilidade // Incluído no retorno do login
+                                status_disponibilidade: fullPrestadorResult.data.status_disponibilidade,
+                                latitude: fullPrestadorResult.data.latitude, // Incluído no retorno do login
+                                longitude: fullPrestadorResult.data.longitude // Incluído no retorno do login
                             },
                             token: token
                         }
@@ -334,7 +353,6 @@ const prestadoresController = {
         const prestador_id_logado = req.user.id;
         const prestador_tipo_logado = req.user.tipo;
 
-        // Apenas o próprio prestador pode atualizar seu status de disponibilidade
         if (prestador_tipo_logado !== 'prestador' || id !== prestador_id_logado) {
             return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para atualizar o status de disponibilidade deste prestador." });
         }
@@ -352,7 +370,7 @@ const prestadoresController = {
 
         try {
             const updatedData = { status_disponibilidade: status_disponibilidade.toLowerCase() };
-            const result = await prestadoresRepository.update(id, updatedData); // Reutiliza o método update do repositório
+            const result = await prestadoresRepository.update(id, updatedData);
 
             if (result.ok) {
                 res.status(result.status).json(result);
@@ -367,7 +385,56 @@ const prestadoresController = {
             console.error("Erro no controller ao atualizar status de disponibilidade do prestador:", error);
             res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao atualizar status de disponibilidade." });
         }
+    },
+
+    /**
+     * @description Busca prestadores por proximidade e filtros de serviço.
+     * Esta rota é pública.
+     * @param {Object} req - Objeto de requisição (query: { lat, lon, radius, categoria_id, titulo }).
+     * @param {Object} res - Objeto de resposta.
+     */
+    getNearbyPrestadores: async (req, res) => {
+        const { lat, lon, radius, categoria_id, titulo } = req.query;
+
+        const erros = [];
+        if (lat === undefined || isNaN(parseFloat(lat)) || parseFloat(lat) < -90 || parseFloat(lat) > 90) {
+            erros.push("Latitude é obrigatória e deve ser um número entre -90 e 90.");
+        }
+        if (lon === undefined || isNaN(parseFloat(lon)) || parseFloat(lon) < -180 || parseFloat(lon) > 180) {
+            erros.push("Longitude é obrigatória e deve ser um número entre -180 e 180.");
+        }
+        if (radius === undefined || isNaN(parseFloat(radius)) || parseFloat(radius) <= 0) {
+            erros.push("Raio é obrigatório e deve ser um número positivo.");
+        }
+        if (categoria_id !== undefined && isNaN(parseInt(categoria_id))) {
+            erros.push("ID da categoria deve ser um número válido.");
+        }
+        // Não há validação de comprimento para 'titulo' aqui, apenas presença se fornecido.
+
+        if (erros.length > 0) {
+            return res.status(400).json({ status: 400, ok: false, message: erros });
+        }
+
+        const filtros = {
+            lat: parseFloat(lat),
+            lon: parseFloat(lon),
+            radius: parseFloat(radius)
+        };
+        if (categoria_id) {
+            filtros.categoria_id = parseInt(categoria_id);
+        }
+        if (titulo) {
+            filtros.titulo = titulo;
+        }
+
+        try {
+            const result = await prestadoresRepository.getNearbyPrestadores(filtros);
+            res.status(result.status).json(result);
+        } catch (error) {
+            console.error("Erro no controller ao buscar prestadores por proximidade:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao buscar prestadores por proximidade." });
+        }
     }
 };
 
-export default prestadoresController;
+export default prestadoresControllers;

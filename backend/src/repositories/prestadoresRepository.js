@@ -1,10 +1,10 @@
-import conexao from "../database/conexao.js"; // Sua instância do pg-promise
+import conexao from "../database/conexao.js";
 
 const prestadoresRepository = {
     // --- Obter Todos os Prestadores ---
     getAll: async () => {
-        // Incluído 'status_disponibilidade' no SELECT
-        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade FROM prestadores;';
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade, latitude, longitude FROM prestadores;';
         try {
             const list = await conexao.any(sql);
             return {
@@ -26,8 +26,8 @@ const prestadoresRepository = {
 
     // --- Obter Prestador por ID ---
     getById: async (id) => {
-        // Incluído 'status_disponibilidade' no SELECT
-        const sql = `SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade FROM prestadores WHERE id=$1;`;
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = `SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade, latitude, longitude FROM prestadores WHERE id=$1;`;
         try {
             const prestador = await conexao.oneOrNone(sql, [id]);
             if (prestador) {
@@ -58,8 +58,8 @@ const prestadoresRepository = {
 
     // --- Obter Prestador por Nome (like) ---
     getByName: async (nome) => {
-        // Incluído 'status_disponibilidade' no SELECT
-        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade FROM prestadores WHERE nome ILIKE $1;';
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade, latitude, longitude FROM prestadores WHERE nome ILIKE $1;';
         try {
             const list = await conexao.any(sql, [`%${nome}%`]);
             return {
@@ -79,7 +79,7 @@ const prestadoresRepository = {
         }
     },
 
-    // --- NOVO MÉTODO: Obter Prestador por Email para Login (apenas ID e Senha) ---
+    // --- Obter Prestador por Email para Login (apenas ID e Senha) ---
     getByEmailForLogin: async (email) => {
         const sql = `SELECT id, senha FROM prestadores WHERE email=$1;`;
         try {
@@ -112,9 +112,9 @@ const prestadoresRepository = {
 
     // --- Criar Novo Prestador ---
     create: async (obj) => {
-        // Incluído 'status_disponibilidade' no INSERT
-        const sql = `INSERT INTO prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
+        // Incluído 'latitude' e 'longitude' no INSERT
+        const sql = `INSERT INTO prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade, latitude, longitude)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`;
 
         try {
             const newPrestador = await conexao.one(sql, [
@@ -128,7 +128,9 @@ const prestadoresRepository = {
                 obj.numero,
                 obj.foto,
                 obj.raioAtuacao,
-                obj.status_disponibilidade // Passando o valor de 'status_disponibilidade'
+                obj.status_disponibilidade,
+                obj.latitude, // Passando o valor de 'latitude'
+                obj.longitude // Passando o valor de 'longitude'
             ]);
             return {
                 status: 201,
@@ -165,7 +167,7 @@ const prestadoresRepository = {
             fields.push(`nome = $${paramCount++}`);
             params.push(obj.nome);
         }
-        if (obj.cpf_cnpj !== undefined) { // CPF/CNPJ geralmente não é atualizado, mas deixado para flexibilidade
+        if (obj.cpf_cnpj !== undefined) {
             fields.push(`cpf_cnpj = $${paramCount++}`);
             params.push(obj.cpf_cnpj);
         }
@@ -201,9 +203,17 @@ const prestadoresRepository = {
             fields.push(`raioAtuacao = $${paramCount++}`);
             params.push(obj.raioAtuacao);
         }
-        if (obj.status_disponibilidade !== undefined) { // NOVO: Incluído 'status_disponibilidade' no UPDATE
+        if (obj.status_disponibilidade !== undefined) {
             fields.push(`status_disponibilidade = $${paramCount++}`);
             params.push(obj.status_disponibilidade);
+        }
+        if (obj.latitude !== undefined) { // Incluído 'latitude' no UPDATE
+            fields.push(`latitude = $${paramCount++}`);
+            params.push(obj.latitude);
+        }
+        if (obj.longitude !== undefined) { // Incluído 'longitude' no UPDATE
+            fields.push(`longitude = $${paramCount++}`);
+            params.push(obj.longitude);
         }
 
         if (fields.length === 0) {
@@ -276,6 +286,89 @@ const prestadoresRepository = {
                 status: 500,
                 ok: false,
                 message: 'Erro de servidor ao deletar prestador',
+                sqlMessage: error.message
+            };
+        }
+    },
+
+    /**
+     * @description Busca prestadores por proximidade e filtros de serviço.
+     * @param {Object} filtros - Objeto com:
+     * - lat: Latitude do ponto central da busca.
+     * - lon: Longitude do ponto central da busca.
+     * - radius: Raio de busca em quilômetros.
+     * - categoria_id (opcional): ID da categoria de serviço.
+     * - titulo (opcional): Título do serviço.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>}
+     */
+    getNearbyPrestadores: async (filtros) => {
+        // Fórmula de Haversine para calcular distância entre dois pontos de lat/lon
+        // Distância em KM
+        const sql = `
+            SELECT
+                p.id,
+                p.nome,
+                p.email,
+                p.telefone,
+                p.cep,
+                p.complemento,
+                p.numero,
+                p.foto,
+                p.raioAtuacao,
+                p.status_disponibilidade,
+                p.latitude,
+                p.longitude,
+                so.id AS servico_id,
+                so.titulo AS servico_titulo,
+                so.descricao AS servico_descricao,
+                so.valor_estimado AS servico_valor_estimado,
+                so.disponibilidade AS servico_disponibilidade,
+                c.nome AS categoria_nome,
+                c.icone_url AS categoria_icone_url,
+                (6371 * acos(
+                    cos(radians($1)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($2)) +
+                    sin(radians($1)) * sin(radians(p.latitude))
+                )) AS distance_km
+            FROM
+                prestadores p
+            JOIN
+                servicos_oferecidos so ON p.id = so.prestador_id
+            JOIN
+                categorias_servico c ON so.categoria_id = c.id
+            WHERE
+                p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND so.ativo = TRUE AND p.status_disponibilidade = 'online'
+                AND (6371 * acos(
+                    cos(radians($1)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($2)) +
+                    sin(radians($1)) * sin(radians(p.latitude))
+                )) <= $3
+                ${filtros.categoria_id ? `AND so.categoria_id = $${4 + (filtros.titulo ? 1 : 0)}` : ''}
+                ${filtros.titulo ? `AND so.titulo ILIKE $${4 + (filtros.categoria_id ? 1 : 0)}` : ''}
+            ORDER BY
+                distance_km ASC;
+        `;
+
+        const params = [filtros.lat, filtros.lon, filtros.radius];
+        if (filtros.categoria_id) {
+            params.push(filtros.categoria_id);
+        }
+        if (filtros.titulo) {
+            params.push(`%${filtros.titulo}%`);
+        }
+
+        try {
+            const list = await conexao.any(sql, params);
+            return {
+                status: 200,
+                ok: true,
+                message: 'Prestadores encontrados por proximidade',
+                data: list
+            };
+        } catch (error) {
+            console.error('Erro ao buscar prestadores por proximidade:', error);
+            return {
+                status: 500,
+                ok: false,
+                message: 'Erro de servidor ao buscar prestadores por proximidade',
                 sqlMessage: error.message
             };
         }

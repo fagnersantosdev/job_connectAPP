@@ -12,6 +12,9 @@ router.get('/id/:id', PrestadoresControllers.getPrestadores);
 router.get('/nome/:nome', PrestadoresControllers.getPrestadoresByName);
 router.get('/foto/:id', PrestadoresControllers.getFotoById);
 
+// NOVO: GET /prestadores/nearby - Buscar prestadores por proximidade e filtros de serviço
+router.get('/nearby', PrestadoresControllers.getNearbyPrestadores);
+
 
 // --- Rotas Protegidas de Prestadores (exigem JWT) ---
 
@@ -21,7 +24,7 @@ router.put('/:id', authMiddleware, PrestadoresControllers.updateUser);
 // DELETE - Excluir prestador (apenas o próprio prestador logado pode excluir sua conta)
 router.delete('/:id', authMiddleware, PrestadoresControllers.deleteUser);
 
-// NOVO: PUT /prestadores/:id/status-disponibilidade - Atualiza o status de disponibilidade do prestador
+// PUT /prestadores/:id/status-disponibilidade - Atualiza o status de disponibilidade do prestador
 router.put('/:id/status-disponibilidade', authMiddleware, PrestadoresControllers.updatePrestadorAvailability);
 
 export default router;

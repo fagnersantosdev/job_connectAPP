@@ -1,17 +1,14 @@
 import clientesRepository from "../repositories/clientesRepository.js";
-import { isEmail } from "../shared/util.js"; // Supondo que blobToBase64 não será mais necessário aqui, ou será adaptado.
-import bcrypt from 'bcrypt'; // Importe a biblioteca bcrypt
-import jwt from 'jsonwebtoken'; // Importar jsonwebtoken
-import dotenv from 'dotenv'; // Importar dotenv
+import { isEmail } from "../shared/util.js";
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
-dotenv.config(); // Carregar as variáveis de ambiente do arquivo .env
-
-// Configuração do custo do Bcrypt. 10 é um bom valor inicial.
+dotenv.config();
 const saltRounds = 10;
 
 const clientesControllers = {
     // --- Obter Cliente por ID ---
-    // RENOMEADO: getClientes (era getPrestadores)
     getClientes: async (req, res) => {
         const id = req.params.id;
         const result = await clientesRepository.getById(id);
@@ -28,7 +25,6 @@ const clientesControllers = {
     },
 
     // --- Obter Clientes por Nome ---
-    // RENOMEADO: getClientesByName (era getPrestadoresByName)
     getClientesByName: async (req, res) => {
         const nome = req.params.nome;
         const result = await clientesRepository.getByName(nome);
@@ -45,7 +41,6 @@ const clientesControllers = {
     },
 
     // --- Obter Todos os Clientes ---
-    // RENOMEADO: getAllClientes (era getAllPrestadores)
     getAllClientes: async (req, res) => {
         const result = await clientesRepository.getAll();
 
@@ -61,10 +56,9 @@ const clientesControllers = {
     },
 
     // --- Criar Novo Cliente ---
-    // RENOMEADO: createClientes (era createPrestadores)
     createClientes: async (req, res) => {
-        // Removido 'raioAtuacao' do destructuring, pois não é campo de cliente
-        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
+        // Adicionado latitude e longitude ao destructuring
+        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone, latitude, longitude } = req.body;
 
         // Validações
         const erros = [];
@@ -86,9 +80,13 @@ const clientesControllers = {
         if (!telefone || !/^\d{10,11}$/.test(telefone)) {
             erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
         }
-        // if (!foto || !foto.buffer) { // This check might be too strict if foto is optional or handled by multer
-        //     erros.push("Foto não enviada ou inválida. Envie uma imagem no formato correto.");
-        // }
+        // Validação de latitude e longitude (opcional, mas recomendado)
+        if (latitude !== undefined && (isNaN(parseFloat(latitude)) || parseFloat(latitude) < -90 || parseFloat(latitude) > 90)) {
+            erros.push("Latitude inválida. Deve ser um número entre -90 e 90.");
+        }
+        if (longitude !== undefined && (isNaN(parseFloat(longitude)) || parseFloat(longitude) < -180 || parseFloat(longitude) > 180)) {
+            erros.push("Longitude inválida. Deve ser um número entre -180 e 180.");
+        }
 
         if (erros.length > 0) {
             return res.status(400).json({
@@ -99,19 +97,20 @@ const clientesControllers = {
         }
 
         try {
-            // HASH DA SENHA COM BCrypt ANTES DE ENVIAR PARA O REPOSITÓRIO
             const hashedPassword = await bcrypt.hash(senha, saltRounds);
 
             const novo = {
                 nome: nome,
                 cpf_cnpj: cpf_cnpj,
                 email: email,
-                senha: hashedPassword, // Senha hasheada
+                senha: hashedPassword,
                 cep: cep,
                 complemento: complemento,
                 numero: numero,
-                foto: foto ? foto.buffer : null, // Passando o Buffer da foto
-                telefone: telefone
+                foto: foto ? foto.buffer : null,
+                telefone: telefone,
+                latitude: latitude !== undefined ? parseFloat(latitude) : null, // Converte para float ou null
+                longitude: longitude !== undefined ? parseFloat(longitude) : null // Converte para float ou null
             };
 
             const result = await clientesRepository.create(novo);
@@ -127,21 +126,42 @@ const clientesControllers = {
     },
 
     // --- Atualizar Cliente ---
-    // RENOMEADO: updateCliente (era updateUser)
     updateCliente: async (req, res) => {
-        // Removido 'raioAtuacao' do destructuring
-        const { id, nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone } = req.body;
+        const id = parseInt(req.params.id); // ID do cliente a ser atualizado
+        const cliente_id_logado = req.user.id; // ID do cliente logado (do JWT)
+        const cliente_tipo_logado = req.user.tipo;
+
+        // Apenas o próprio cliente pode atualizar seus dados
+        if (cliente_tipo_logado !== 'cliente' || id !== cliente_id_logado) {
+            return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para atualizar este cliente." });
+        }
+
+        // Adicionado latitude e longitude ao destructuring
+        const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, telefone, latitude, longitude } = req.body;
 
         // Validações
         const erros = [];
-        if (nome.length < 3 || nome.length > 30) {
+        if (nome && (nome.length < 3 || nome.length > 30)) {
             erros.push("O nome deve ter entre 3 e 30 caracteres");
         }
-        if (!isEmail(email)) {
+        if (email && !isEmail(email)) {
             erros.push("Email inválido");
         }
         if (senha && senha.length < 8) {
             erros.push("A senha deve ter no mínimo 8 caracteres (se estiver sendo atualizada)");
+        }
+        if (cep && !/^\d{8}$/.test(cep)) {
+            erros.push("CEP inválido. Use apenas 8 dígitos numéricos");
+        }
+        if (telefone && !/^\d{10,11}$/.test(telefone)) {
+            erros.push("Telefone inválido. Use DDD + número (10 ou 11 dígitos)");
+        }
+        // Validação de latitude e longitude (opcional, mas recomendado)
+        if (latitude !== undefined && (isNaN(parseFloat(latitude)) || parseFloat(latitude) < -90 || parseFloat(latitude) > 90)) {
+            erros.push("Latitude inválida. Deve ser um número entre -90 e 90.");
+        }
+        if (longitude !== undefined && (isNaN(parseFloat(longitude)) || parseFloat(longitude) < -180 || parseFloat(longitude) > 180)) {
+            erros.push("Longitude inválida. Deve ser um número entre -180 e 180.");
         }
 
         if (erros.length > 0) {
@@ -153,19 +173,26 @@ const clientesControllers = {
         }
 
         try {
-            let hashedPassword = senha;
-            if (senha) { // Se uma nova senha foi fornecida, hasheie-a
-                hashedPassword = await bcrypt.hash(senha, saltRounds);
+            const updatedData = {};
+            if (nome !== undefined) updatedData.nome = nome;
+            if (cpf_cnpj !== undefined) updatedData.cpf_cnpj = cpf_cnpj; // CPF/CNPJ geralmente não é atualizado, mas deixado para flexibilidade
+            if (email !== undefined) updatedData.email = email;
+            if (telefone !== undefined) updatedData.telefone = telefone;
+            if (cep !== undefined) updatedData.cep = cep;
+            if (complemento !== undefined) updatedData.complemento = complemento;
+            if (numero !== undefined) updatedData.numero = numero;
+            if (foto !== undefined) updatedData.foto = foto ? foto.buffer : null;
+            if (latitude !== undefined) updatedData.latitude = parseFloat(latitude); // Converte para float
+            if (longitude !== undefined) updatedData.longitude = parseFloat(longitude); // Converte para float
+
+            if (senha) {
+                updatedData.senha = await bcrypt.hash(senha, saltRounds);
             } else {
                 // Se a senha não foi fornecida, busque a senha atual do banco de dados
-                // para garantir que ela não seja sobrescrita com null ou undefined.
-                // Isso requer uma busca adicional, mas é mais seguro.
                 const currentClientResult = await clientesRepository.getById(id);
                 if (currentClientResult.ok && currentClientResult.data) {
-                    hashedPassword = currentClientResult.data.senha;
+                    updatedData.senha = currentClientResult.data.senha;
                 } else {
-                    // Se o cliente não for encontrado, ou não tiver senha, trate o erro.
-                    // Isso pode indicar um ID inválido ou um problema.
                     return res.status(404).json({
                         status: 404,
                         ok: false,
@@ -173,18 +200,6 @@ const clientesControllers = {
                     });
                 }
             }
-
-            const updatedData = {
-                nome: nome,
-                cpf_cnpj: cpf_cnpj,
-                email: email,
-                senha: hashedPassword, // Senha hasheada (ou a original se não foi alterada)
-                cep: cep,
-                complemento: complemento,
-                numero: numero,
-                foto: foto ? foto.buffer : null, // Passando o Buffer da foto
-                telefone: telefone
-            };
 
             const result = await clientesRepository.update(id, updatedData);
             res.status(result.status).json(result);
@@ -199,19 +214,24 @@ const clientesControllers = {
     },
 
     // --- Deletar Cliente ---
-    // RENOMEADO: deleteCliente (era deleteUser)
     deleteCliente: async (req, res) => {
-        const id = req.params.id;
+        const id = parseInt(req.params.id);
+        const cliente_id_logado = req.user.id;
+        const cliente_tipo_logado = req.user.tipo;
+
+        // Apenas o próprio cliente pode deletar sua conta
+        if (cliente_tipo_logado !== 'cliente' || id !== cliente_id_logado) {
+            return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para deletar este cliente." });
+        }
+
         const result = await clientesRepository.delete(id);
         res.status(result.status).json(result);
     },
 
-    // --- NOVO MÉTODO: Login de Cliente ---
-    // RENOMEADO: loginCliente (era loginPrestador)
+    // --- Login de Cliente ---
     loginCliente: async (req, res) => {
         const { email, senha } = req.body;
 
-        // Validação básica
         if (!email || !senha) {
             return res.status(400).json({
                 status: 400,
@@ -221,11 +241,9 @@ const clientesControllers = {
         }
 
         try {
-            // 1. Buscar o cliente pelo email para obter a senha hasheada
             const userResult = await clientesRepository.getByEmailForLogin(email);
 
             if (!userResult.ok || !userResult.data) {
-                // Cliente não encontrado ou erro
                 return res.status(401).json({
                     status: 401,
                     ok: false,
@@ -234,24 +252,19 @@ const clientesControllers = {
             }
 
             const clienteNoBanco = userResult.data;
-
-            // 2. Comparar a senha fornecida com a senha hasheada do banco
             const isPasswordValid = await bcrypt.compare(senha, clienteNoBanco.senha);
 
             if (isPasswordValid) {
-                // Senha correta: Gerar JWT
                 const payload = {
                     id: clienteNoBanco.id,
-                    email: email, // Usar o email do request ou do banco, ambos devem ser o mesmo
-                    tipo: 'cliente' // Adicionar o tipo de usuário ao payload
+                    email: email,
+                    tipo: 'cliente'
                 };
 
-                // Certifique-se de que process.env.JWT_SECRET e process.env.JWT_EXPIRES_IN estão configurados no .env
                 const token = jwt.sign(payload, process.env.JWT_SECRET, {
-                    expiresIn: process.env.JWT_EXPIRES_IN // Ex: '1h'
+                    expiresIn: process.env.JWT_EXPIRES_IN
                 });
 
-                // Buscar os dados completos do cliente (sem a senha) para retornar na resposta
                 const fullClienteResult = await clientesRepository.getById(clienteNoBanco.id);
                 if (fullClienteResult.ok) {
                     res.status(200).json({
@@ -263,13 +276,13 @@ const clientesControllers = {
                                 id: fullClienteResult.data.id,
                                 nome: fullClienteResult.data.nome,
                                 email: fullClienteResult.data.email,
-                                // ... outros dados do cliente que você queira retornar (sem a senha)
+                                latitude: fullClienteResult.data.latitude, // Incluído no retorno do login
+                                longitude: fullClienteResult.data.longitude // Incluído no retorno do login
                             },
-                            token: token // Retornar o token para o cliente
+                            token: token
                         }
                     });
                 } else {
-                    // Deveria ser raro, mas para garantir
                     res.status(500).json({
                         status: 500,
                         ok: false,
@@ -277,7 +290,6 @@ const clientesControllers = {
                     });
                 }
             } else {
-                // Senha incorreta
                 res.status(401).json({
                     status: 401,
                     ok: false,
@@ -297,11 +309,10 @@ const clientesControllers = {
     // --- Obter Foto por ID ---
     getFotoById: async (req, res) => {
         const id = req.params.id;
-        const result = await clientesRepository.getById(id); // Usando clientesRepository
+        const result = await clientesRepository.getById(id);
 
         if (result.ok && result.data && result.data.foto) {
             const fotoBuffer = result.data.foto;
-            // Converte o Buffer para Base64
             const base64Image = Buffer.from(fotoBuffer).toString('base64');
             res.status(200).send(`<h1>Imagem</h1><img src="data:image/png;base64,${base64Image}">`);
         } else if (result.ok && result.data && !result.data.foto) {

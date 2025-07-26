@@ -1,10 +1,10 @@
-import conexao from "../database/conexao.js"; // Sua instância do pg-promise
+import conexao from "../database/conexao.js";
 
 const clientesRepository = {
     // --- Obter Todos os Clientes ---
     getAll: async () => {
-        // CORRIGIDO: Tabela 'clientes'
-        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto FROM clientes;';
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, latitude, longitude FROM clientes;';
         try {
             const list = await conexao.any(sql);
             return {
@@ -26,8 +26,8 @@ const clientesRepository = {
 
     // --- Obter Cliente por ID ---
     getById: async (id) => {
-        // CORRIGIDO: Tabela 'clientes'
-        const sql = `SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto FROM clientes WHERE id=$1;`;
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = `SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, latitude, longitude FROM clientes WHERE id=$1;`;
         try {
             const cliente = await conexao.oneOrNone(sql, [id]);
             if (cliente) {
@@ -35,7 +35,7 @@ const clientesRepository = {
                     status: 200,
                     ok: true,
                     message: 'Cliente encontrado com sucesso',
-                    data: cliente // CORRIGIDO: Variável 'cliente'
+                    data: cliente
                 };
             } else {
                 return {
@@ -58,8 +58,8 @@ const clientesRepository = {
 
     // --- Obter Cliente por Nome (like) ---
     getByName: async (nome) => {
-        // CORRIGIDO: Tabela 'clientes'
-        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto FROM clientes WHERE nome ILIKE $1;';
+        // Incluído 'latitude' e 'longitude' no SELECT
+        const sql = 'SELECT id, nome, cpf_cnpj, email, telefone, cep, complemento, numero, foto, latitude, longitude FROM clientes WHERE nome ILIKE $1;';
         try {
             const list = await conexao.any(sql, [`%${nome}%`]);
             return {
@@ -81,7 +81,6 @@ const clientesRepository = {
 
     // --- Obter Cliente por Email para Login (apenas ID e Senha) ---
     getByEmailForLogin: async (email) => {
-        // CORRIGIDO: Tabela 'clientes'
         const sql = `SELECT id, senha FROM clientes WHERE email=$1;`;
         try {
             const cliente = await conexao.oneOrNone(sql, [email]);
@@ -90,7 +89,7 @@ const clientesRepository = {
                     status: 200,
                     ok: true,
                     message: 'Credenciais de login obtidas com sucesso',
-                    data: cliente // CORRIGIDO: Variável 'cliente'
+                    data: cliente
                 };
             } else {
                 return {
@@ -113,34 +112,33 @@ const clientesRepository = {
 
     // --- Criar Novo Cliente ---
     create: async (obj) => {
-        // CORRIGIDO: Removido 'raioAtuacao' do SQL e dos parâmetros, pois não é campo de cliente.
-        // Verifique se o número de placeholders ($n) corresponde exatamente ao número de parâmetros.
-        // A senha (obj.senha) JÁ DEVE ESTAR HASHADA AQUI, vinda do controller.
-        const sql = `INSERT INTO clientes (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;`; // 9 placeholders
+        // Incluído 'latitude' e 'longitude' no INSERT
+        const sql = `INSERT INTO clientes (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, latitude, longitude)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
 
         try {
             const newCliente = await conexao.one(sql, [
                 obj.nome,
                 obj.cpf_cnpj,
                 obj.email,
-                obj.senha, // Senha já hasheada pelo Bcrypt no controller
+                obj.senha,
                 obj.telefone,
                 obj.cep,
                 obj.complemento,
                 obj.numero,
                 obj.foto,
-                // obj.raioAtuacao - REMOVIDO, pois não é campo de clientes
+                obj.latitude, // Passando o valor de 'latitude'
+                obj.longitude // Passando o valor de 'longitude'
             ]);
             return {
                 status: 201,
                 ok: true,
                 message: 'Cliente criado com sucesso',
-                data: newCliente // CORRIGIDO: Variável 'newCliente'
+                data: newCliente
             };
         } catch (error) {
             console.error('Erro ao criar cliente:', error);
-            if (error.code === '23505') {
+            if (error.code === '23505') { // unique_violation (email ou cpf_cnpj já existe)
                 return {
                     status: 409,
                     ok: false,
@@ -159,27 +157,63 @@ const clientesRepository = {
 
     // --- Atualizar Cliente ---
     update: async (id, obj) => {
-        // CORRIGIDO: Tabela 'clientes'. Removido 'raioAtuacao'.
-        // CORRIGIDO: Número de placeholders e ordem para corresponder aos parâmetros.
-        // A senha (obj.senha) JÁ DEVE ESTAR HASHADA AQUI se foi modificada no controller.
-        const sql = `UPDATE clientes SET
-                     nome=$1, email=$2, senha=$3, telefone=$4, cep=$5, complemento=$6,
-                     numero=$7, foto=$8
-                     WHERE id=$9 RETURNING *;`; // 8 campos para SET + 1 para WHERE = 9 placeholders
+        const fields = [];
+        const params = [id];
+        let paramCount = 2;
+
+        if (obj.nome !== undefined) {
+            fields.push(`nome = $${paramCount++}`);
+            params.push(obj.nome);
+        }
+        if (obj.cpf_cnpj !== undefined) {
+            fields.push(`cpf_cnpj = $${paramCount++}`);
+            params.push(obj.cpf_cnpj);
+        }
+        if (obj.email !== undefined) {
+            fields.push(`email = $${paramCount++}`);
+            params.push(obj.email);
+        }
+        if (obj.senha !== undefined) {
+            fields.push(`senha = $${paramCount++}`);
+            params.push(obj.senha);
+        }
+        if (obj.telefone !== undefined) {
+            fields.push(`telefone = $${paramCount++}`);
+            params.push(obj.telefone);
+        }
+        if (obj.cep !== undefined) {
+            fields.push(`cep = $${paramCount++}`);
+            params.push(obj.cep);
+        }
+        if (obj.complemento !== undefined) {
+            fields.push(`complemento = $${paramCount++}`);
+            params.push(obj.complemento);
+        }
+        if (obj.numero !== undefined) {
+            fields.push(`numero = $${paramCount++}`);
+            params.push(obj.numero);
+        }
+        if (obj.foto !== undefined) {
+            fields.push(`foto = $${paramCount++}`);
+            params.push(obj.foto);
+        }
+        if (obj.latitude !== undefined) { // Incluído 'latitude' no UPDATE
+            fields.push(`latitude = $${paramCount++}`);
+            params.push(obj.latitude);
+        }
+        if (obj.longitude !== undefined) { // Incluído 'longitude' no UPDATE
+            fields.push(`longitude = $${paramCount++}`);
+            params.push(obj.longitude);
+        }
+
+        if (fields.length === 0) {
+            return { status: 400, ok: false, message: "Nenhum campo para atualizar fornecido." };
+        }
+
+        const sql = `UPDATE clientes SET ${fields.join(', ')} WHERE id = $1 RETURNING *;`;
 
         try {
-            const updatedCliente = await conexao.oneOrNone(sql, [
-                obj.nome,
-                obj.email,
-                obj.senha, // Senha já hasheada (se nova) ou a antiga (se não alterada)
-                obj.telefone,
-                obj.cep,
-                obj.complemento,
-                obj.numero,
-                obj.foto,
-                // obj.raioAtuacao - REMOVIDO
-                id // ID é o $9
-            ]);
+            const updatedCliente = await conexao.oneOrNone(sql, params);
 
             if (updatedCliente) {
                 return {
@@ -202,7 +236,7 @@ const clientesRepository = {
                 return {
                     status: 409,
                     ok: false,
-                    message: 'Erro: Email já cadastrado para outro cliente.',
+                    message: 'Erro: Email ou CPF/CNPJ já cadastrado para outro cliente.',
                     sqlMessage: error.message
                 };
             }
@@ -217,7 +251,6 @@ const clientesRepository = {
 
     // --- Deletar Cliente ---
     delete: async (id) => {
-        // CORRIGIDO: Tabela 'clientes'
         const sql = "DELETE FROM clientes WHERE id=$1 RETURNING id;";
         try {
             const deletedRow = await conexao.oneOrNone(sql, [id]);
