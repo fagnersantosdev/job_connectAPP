@@ -1,6 +1,6 @@
 import categoriasRepository from "../repositories/categoriasRepository.js";
 
-const categoriasControllers = {
+const categoriasController = {
     /**
      * @description Obtém todas as categorias de serviço.
      * @param {Object} req - Objeto de requisição.
@@ -149,4 +149,4 @@ const categoriasControllers = {
     }
 };
 
-export default categoriasControllers;
+export default categoriasController;

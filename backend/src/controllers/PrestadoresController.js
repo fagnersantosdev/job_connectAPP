@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const saltRounds = 10;
 
-const prestadoresControllers = {
+const prestadoresController = {
     // --- Obter Prestador por ID ---
     getPrestadores: async (req, res) => {
         const id = req.params.id;
@@ -437,4 +437,4 @@ const prestadoresControllers = {
     }
 };
 
-export default prestadoresControllers;
+export default prestadoresController;

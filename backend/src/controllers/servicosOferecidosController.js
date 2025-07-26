@@ -2,7 +2,7 @@ import servicosOferecidosRepository from "../repositories/servicosOferecidosRepo
 import prestadoresRepository from "../repositories/prestadoresRepository.js"; // Pode ser útil para futuras validações, mas não essencial aqui
 import categoriasRepository from "../repositories/categoriasRepository.js";
 
-const servicosOferecidosControllers = {
+const servicosOferecidosController = {
     /**
      * @description Cria um novo serviço oferecido por um prestador.
      * Requer autenticação de prestador, e o prestador_id é obtido do token JWT.
@@ -247,4 +247,4 @@ const servicosOferecidosControllers = {
     }
 };
 
-export default servicosOferecidosControllers;
+export default servicosOferecidosController;

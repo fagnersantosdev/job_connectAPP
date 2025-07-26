@@ -1,5 +1,5 @@
 import express from 'express';
-import mensagensControllers from '../controllers/mensagensControllers.js';
+import mensagensController from '../controllers/mensagensController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import multer from 'multer';
 import path from 'path'; // Importar path
@@ -45,15 +45,15 @@ const router = express.Router();
 
 // POST /mensagens - Envia uma nova mensagem (com suporte a upload de imagem)
 // 'upload.single('foto')' significa que esperamos um único arquivo no campo 'foto' do formulário.
-router.post('/', authMiddleware, upload.single('foto'), mensagensControllers.createMensagem);
+router.post('/', authMiddleware, upload.single('foto'), mensagensController.createMensagem);
 
 // GET /mensagens/solicitacao/:solicitacao_id - Obtém todas as mensagens para uma solicitação específica
-router.get('/solicitacao/:solicitacao_id', authMiddleware, mensagensControllers.getMensagensBySolicitacao);
+router.get('/solicitacao/:solicitacao_id', authMiddleware, mensagensController.getMensagensBySolicitacao);
 
 // PUT /mensagens/:id/read - Marca uma mensagem como lida
-router.put('/:id/read', authMiddleware, mensagensControllers.markMensagemAsRead);
+router.put('/:id/read', authMiddleware, mensagensController.markMensagemAsRead);
 
 // DELETE /mensagens/:id - Deleta uma mensagem
-router.delete('/:id', authMiddleware, mensagensControllers.deleteMensagem);
+router.delete('/:id', authMiddleware, mensagensController.deleteMensagem);
 
 export default router;

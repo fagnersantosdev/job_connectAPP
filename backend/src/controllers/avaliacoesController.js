@@ -1,7 +1,7 @@
 import avaliacoesRepository from "../repositories/avaliacoesRepository.js";
 import solicitacoesRepository from "../repositories/solicitacoesRepository.js"; // Para verificar o status da solicitação
 
-const avaliacoesControllers = {
+const avaliacoesController = {
     /**
      * @description Cria uma nova avaliação. Apenas clientes podem avaliar serviços que foram concluídos.
      * @param {Object} req - Objeto de requisição (body: { solicitacao_id, nota, comentario }).
@@ -157,4 +157,4 @@ const avaliacoesControllers = {
     }
 };
 
-export default avaliacoesControllers;
+export default avaliacoesController;

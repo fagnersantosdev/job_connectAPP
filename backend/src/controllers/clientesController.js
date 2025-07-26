@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const saltRounds = 10;
 
-const clientesControllers = {
+const clientesController = {
     // --- Obter Cliente por ID ---
     getClientes: async (req, res) => {
         const id = req.params.id;
@@ -331,4 +331,4 @@ const clientesControllers = {
     },
 };
 
-export default clientesControllers;
+export default clientesController;
