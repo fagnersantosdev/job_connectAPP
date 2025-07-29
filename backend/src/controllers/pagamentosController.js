@@ -290,43 +290,79 @@ const pagamentosController = {
     handleWebhook: async (req, res) => {
         console.log("[Webhook] Recebido webhook do Stark Bank:", req.body);
 
-        // A estrutura do payload do webhook do Stark Bank pode variar.
-        // Você precisaria consultar a documentação oficial para parsear corretamente.
         const webhookData = req.body;
+        const externalId = webhookData.id;
+        let newStatus = webhookData.status; // Usar let para poder reatribuir
+        const type = webhookData.type;
+
+        console.log(`[Webhook DEBUG] Processando webhook para externalId: ${externalId}, status: ${newStatus}, tipo: ${type}`);
 
         try {
-            // Exemplo simplificado: Supondo que o webhook envia o ID da transação externa e o novo status
-            const externalId = webhookData.id; // ID da transação no Stark Bank
-            const newStatus = webhookData.status; // Novo status (ex: "paid", "failed")
-            const type = webhookData.type; // Ex: "pix-payment", "transfer"
+            // Mapear status do Stark Bank para status interno do seu DB
+            if (newStatus === 'paid') {
+                newStatus = 'concluida'; // Mapeia 'paid' para 'concluida'
+            } else if (newStatus === 'failed') {
+                newStatus = 'falhou'; // Exemplo de mapeamento para falha
+            } else if (newStatus === 'processing') {
+                newStatus = 'processando'; // Mapeia 'processing' para 'processando'
+            }
+            // Adicione mais mapeamentos conforme a documentação do Stark Bank
+
+            console.log(`[Webhook DEBUG] Status mapeado para DB interno: ${newStatus}`);
+
 
             // Buscar a transação correspondente no seu banco de dados pelo id_externo_gateway
-            const transacaoResult = await pagamentosRepository.getTransacaoByExternalId(externalId); // Método a ser criado no repo
+            const transacaoResult = await pagamentosRepository.getTransacaoByExternalId(externalId);
             if (!transacaoResult.ok || !transacaoResult.data) {
-                console.warn(`[Webhook] Transação com ID externo ${externalId} não encontrada no DB interno.`);
+                console.warn(`[Webhook DEBUG] Transação com ID externo ${externalId} não encontrada no DB interno.`);
                 return res.status(404).json({ status: 404, ok: false, message: "Transação não encontrada no sistema." });
             }
             const transacao = transacaoResult.data;
+            console.log(`[Webhook DEBUG] Transação interna encontrada: ID=${transacao.id}, Status Atual=${transacao.status}`);
 
             // Atualizar o status da transação
             const updateTransacaoResult = await pagamentosRepository.updateTransacaoStatus(transacao.id, newStatus);
+            console.log(`[Webhook DEBUG] Resultado da atualização da transação:`, updateTransacaoResult);
+
             if (!updateTransacaoResult.ok) {
-                console.error(`[Webhook] Erro ao atualizar status da transação ${transacao.id}:`, updateTransacaoResult.message);
+                console.error(`[Webhook DEBUG] Erro ao atualizar status da transação ${transacao.id}:`, updateTransacaoResult.message);
                 return res.status(500).json({ status: 500, ok: false, message: "Erro ao atualizar status da transação interna." });
             }
 
             // Lógica adicional baseada no tipo e status da transação
-            if (type === 'pix-payment' && newStatus === 'paid') {
+            if (type === 'pix-payment' && newStatus === 'concluida') { // Usar 'concluida' aqui
+                console.log(`[Webhook DEBUG] Pagamento Pix confirmado para solicitação ${transacao.solicitacao_id}.`);
                 // Se o pagamento do cliente foi confirmado, atualiza a conta de custódia
                 const contaCustodiaResult = await pagamentosRepository.getContaCustodiaBySolicitacaoId(transacao.solicitacao_id);
                 if (contaCustodiaResult.ok && contaCustodiaResult.data) {
                     const contaCustodia = contaCustodiaResult.data;
-                    await pagamentosRepository.updateContaCustodia(contaCustodia.id, {
-                        valor_em_custodia: contaCustodia.valor_total, // Valor total agora em custódia
+                    console.log(`[Webhook DEBUG] Conta de custódia encontrada: ID=${contaCustodia.id}, Status Atual=${contaCustodia.status}`);
+
+                    // Verifica se o valor da transação corresponde ao valor total da solicitação
+                    const valorTransacao = parseFloat(transacao.valor);
+                    const valorTotalCustodia = parseFloat(contaCustodia.valor_total);
+
+                    if (valorTransacao !== valorTotalCustodia) {
+                        console.warn(`[Webhook DEBUG] Discrepância de valor: Transação ${valorTransacao} vs Custódia ${valorTotalCustodia}.`);
+                        // Você pode decidir como lidar com isso: erro, log, ou ajustar a custódia.
+                        // Por enquanto, vamos prosseguir com o valor da transação.
+                    }
+
+                    const updateCustodia = await pagamentosRepository.updateContaCustodia(contaCustodia.id, {
+                        valor_em_custodia: valorTransacao, // Valor total agora em custódia
                         status: 'depositado'
                     });
-                    // Opcional: Atualizar status da solicitação para 'aguardando_liberacao'
-                    await solicitacoesRepository.update(transacao.solicitacao_id, { status: 'aguardando_liberacao' });
+                    console.log(`[Webhook DEBUG] Resultado da atualização da custódia:`, updateCustodia);
+
+                    if (updateCustodia.ok) {
+                        // Opcional: Atualizar status da solicitação para 'aguardando_liberacao'
+                        const updateSolicitacaoStatus = await solicitacoesRepository.update(transacao.solicitacao_id, { status: 'aguardando_liberacao' });
+                        console.log(`[Webhook DEBUG] Resultado da atualização do status da solicitação:`, updateSolicitacaoStatus);
+                    } else {
+                        console.error(`[Webhook DEBUG] Erro ao atualizar conta de custódia para solicitação ${transacao.solicitacao_id}:`, updateCustodia.message);
+                    }
+                } else {
+                    console.warn(`[Webhook DEBUG] Conta de custódia não encontrada para solicitação ${transacao.solicitacao_id}.`);
                 }
             }
             // Você adicionaria lógica para 'transfer' (repasse), 'boleto', etc.

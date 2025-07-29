@@ -53,3 +53,9 @@
 // echo "UPDATE prestadores SET senha = 'SEU_NOVO_HASH_BCRYPT_AQUI' WHERE id = 1;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
 
 // echo "SELECT id, nome, email, senha, cpf_cnpj FROM clientes;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db (COMANDO PARA LISTAR TODOS OS DADOS DO CLIENTE DE UMA TABELA ESPECÍFICA)
+
+// (SCRIPT PARA EXECUTAR O SCRIPT.DB E CRIAR O NOVO BANCO COM OS DADOS)
+//type src/database/scriptdb.sql | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
+
+// (SCRIPT PARA CONFIRMAR SE O VALOR DO SERVIÇO FOI DEPOSITADO)
+// echo "SELECT * FROM contas_custodia WHERE solicitacao_id = 1;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db

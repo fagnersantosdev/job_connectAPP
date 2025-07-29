@@ -96,31 +96,31 @@ CREATE TABLE IF NOT EXISTS mensagens (
     CONSTRAINT chk_conteudo_ou_foto CHECK (conteudo IS NOT NULL OR foto_url IS NOT NULL)
 );
 
--- NOVO DDL: Tabela para Planos de Assinatura (Premium, Gratuito, etc.)
+-- DDL: Tabela para Planos de Assinatura (Premium, Gratuito, etc.)
 CREATE TABLE IF NOT EXISTS planos_assinatura (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(50) NOT NULL UNIQUE,
     descricao TEXT,
     valor DECIMAL(10, 2) NOT NULL,
     periodicidade VARCHAR(20) NOT NULL CHECK (periodicidade IN ('mensal', 'anual', 'gratuito')),
-    taxa_comissao DECIMAL(5, 2) NOT NULL, -- Taxa de comissão para este plano (ex: 0.10 para 10%)
+    taxa_comissao DECIMAL(5, 4) NOT NULL CHECK (taxa_comissao >= 0 AND taxa_comissao <= 1), -- Ex: 0.15 para 15%
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- NOVO DDL: Tabela para Assinaturas de Prestadores
+-- DDL: Tabela para Assinaturas de Prestadores
 CREATE TABLE IF NOT EXISTS assinaturas_prestadores (
     id SERIAL PRIMARY KEY,
     prestador_id INTEGER NOT NULL UNIQUE REFERENCES prestadores(id) ON DELETE CASCADE,
     plano_id INTEGER NOT NULL REFERENCES planos_assinatura(id) ON DELETE RESTRICT,
     data_inicio TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    data_fim TIMESTAMP WITH TIME ZONE, -- Nulo para planos gratuitos ou se a assinatura for perpétua
+    data_fim TIMESTAMP WITH TIME ZONE,
     status VARCHAR(20) DEFAULT 'ativo' CHECK (status IN ('ativo', 'cancelado', 'expirado', 'pendente')),
     data_ultima_cobranca TIMESTAMP WITH TIME ZONE,
     proxima_cobranca TIMESTAMP WITH TIME ZONE
 );
 
--- NOVO DDL: Tabela para Contas de Custódia (Escrow)
+-- DDL: Tabela para Contas de Custódia (Escrow)
 CREATE TABLE IF NOT EXISTS contas_custodia (
     id SERIAL PRIMARY KEY,
     solicitacao_id INTEGER NOT NULL UNIQUE REFERENCES solicitacoes_servico(id) ON DELETE CASCADE,
@@ -131,27 +131,27 @@ CREATE TABLE IF NOT EXISTS contas_custodia (
     data_ultima_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- NOVO DDL: Tabela para Transações Financeiras
+-- DDL: Tabela para Transações Financeiras
 CREATE TABLE IF NOT EXISTS transacoes (
     id SERIAL PRIMARY KEY,
-    solicitacao_id INTEGER REFERENCES solicitacoes_servico(id) ON DELETE SET NULL, -- Opcional, transação pode não estar ligada a uma solicitação
-    conta_custodia_id INTEGER REFERENCES contas_custodia(id) ON DELETE SET NULL, -- Opcional, transação pode não estar ligada a uma conta de custódia
-    remetente_id INTEGER, -- ID do cliente ou prestador ou nulo (para transações da plataforma)
+    solicitacao_id INTEGER REFERENCES solicitacoes_servico(id) ON DELETE SET NULL,
+    conta_custodia_id INTEGER REFERENCES contas_custodia(id) ON DELETE SET NULL,
+    remetente_id INTEGER,
     remetente_tipo VARCHAR(10) CHECK (remetente_tipo IN ('cliente', 'prestador', 'plataforma')),
-    destinatario_id INTEGER, -- ID do cliente ou prestador ou nulo (para transações da plataforma)
+    destinatario_id INTEGER,
     destinatario_tipo VARCHAR(10) CHECK (destinatario_tipo IN ('cliente', 'prestador', 'plataforma')),
     tipo_transacao VARCHAR(50) NOT NULL CHECK (tipo_transacao IN ('pagamento_servico', 'deposito_custodia', 'liberacao_custodia', 'reembolso_custodia', 'repasse_prestador', 'cobranca_assinatura', 'taxa_plataforma')),
     valor DECIMAL(10, 2) NOT NULL,
     moeda VARCHAR(3) DEFAULT 'BRL',
-    metodo_pagamento VARCHAR(50), -- pix, boleto, cartao_credito, transferencia
-    status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluida', 'falhou', 'cancelada', 'reembolsada')),
-    id_externo_gateway VARCHAR(255) UNIQUE, -- ID da transação no Stark Bank, por exemplo
+    metodo_pagamento VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluida', 'falhou', 'cancelada', 'reembolsada', 'processando')), -- Adicionado 'processando' e 'falhou'
+    id_externo_gateway VARCHAR(255) UNIQUE,
     data_transacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 
--- Índices para otimização de busca (já existentes)
+-- Índices para otimização de busca
 CREATE INDEX IF NOT EXISTS idx_clientes_email ON clientes (email);
 CREATE INDEX IF NOT EXISTS idx_clientes_cpf_cnpj ON clientes (cpf_cnpj);
 CREATE INDEX IF NOT EXISTS idx_clientes_latitude_longitude ON clientes (latitude, longitude);
@@ -180,7 +180,7 @@ CREATE INDEX IF NOT EXISTS idx_mensagens_remetente_id ON mensagens (remetente_id
 CREATE INDEX IF NOT EXISTS idx_mensagens_destinatario_id ON mensagens (destinatario_id);
 CREATE INDEX IF NOT EXISTS idx_mensagens_data_envio ON mensagens (data_envio);
 
--- NOVO: Índices para as novas tabelas
+-- Índices para as tabelas de pagamento e assinatura
 CREATE INDEX IF NOT EXISTS idx_assinaturas_prestador_id ON assinaturas_prestadores (prestador_id);
 CREATE INDEX IF NOT EXISTS idx_assinaturas_plano_id ON assinaturas_prestadores (plano_id);
 CREATE INDEX IF NOT EXISTS idx_contas_custodia_solicitacao_id ON contas_custodia (solicitacao_id);
@@ -189,23 +189,24 @@ CREATE INDEX IF NOT EXISTS idx_transacoes_conta_custodia_id ON transacoes (conta
 CREATE INDEX IF NOT EXISTS idx_transacoes_remetente_id_tipo ON transacoes (remetente_id, remetente_tipo);
 CREATE INDEX IF NOT EXISTS idx_transacoes_destinatario_id_tipo ON transacoes (destinatario_id, destinatario_tipo);
 CREATE INDEX IF NOT EXISTS idx_transacoes_tipo_status ON transacoes (tipo_transacao, status);
+CREATE INDEX IF NOT EXISTS idx_transacoes_id_externo_gateway ON transacoes (id_externo_gateway);
 
 
 -- Inserções de dados iniciais (com senhas hasheadas com bcrypt)
 INSERT INTO clientes (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, latitude, longitude) VALUES
-('Joana Silva', '11122233344', 'joana.silva@gmail.com', '$2b$10$73ogDsn9ywAGfl7VSJFR8uZnzrEpTxqDKEKaim8HlRk37yUpZtxOO', '21999101112', '27351000', 'Apto 505', '500', NULL, -22.9068, -43.1729),
-('Maria Cliente', '12345678978', 'maria.cliente@gmail.com', '$2b$10$O45F6vNI9A8QSQBtQF0K0eyrdDbsBqKQnIJCW7.yeGMj7nKOXzLxq', '24999121314', '27123456', 'Casa 10', '10', NULL, -23.5505, -46.6333),
-('Francisco de Souza', '11178965412', 'francisco.souza@gmail.com', '$2b$10$IEJrxecU8wqG/H3U8Jalp.1kfej2P66kbanE8G0CURhGLSo.kcSDi', '21999654321', '27340000', 'Apto 105', '50', NULL, -22.9068, -43.1729),
-('Maria Clara', '12088877766', 'maria.clara@gmail.com', '$2b$10$LtMtXoUUdz5YuD5rUIhsYOs8s8B6bk.7tSy5LLUXM.lAfynML65Xa', '21999030405', '27340340', 'Apto 305', '1500', NULL, -22.9068, -43.1729);
+('Joana Silva', '11122233344', 'joana.silva@email.com', '$2b$10$kz3aMweX8Yl8l0z1kcscJ.YNmSdE2oePWAoYUIMbd4ZquV9jCi9oC', '21987654321', '20000000', 'Apto 505', '500', NULL, -22.9068, -43.1729),
+('Maria Cliente', '99988877766', 'maria.cliente@email.com', '$2b$10$arPZ3eYxwuIekHkdb5aGlulu0bCRxJzUmpL4beq6TXP.6nHk8/UPK', '11998877665', '01000000', 'Casa 10', '10', NULL, -23.5505, -46.6333),
+('Francisco de Souza', '11178965412', 'francisco.souza@gmail.com', '$2b$10$rXMJkHxjFLpo8gRO0nmble.kQ7nI2ysjtxEhaLez/gRi2.v7tARza', '21999654321', '27340000', 'Apto 105', '50', NULL, -22.9068, -43.1729),
+('Maria Clara', '12088877766', 'maria.clara@gmail.com', '$2b$10$QCrzp.0LkCKFnCiIFPQHxuSJODFZvzm1Lzp6gDmJzzGZtyCuUHGsW', '21999030405', '27340340', 'Apto 305', '1500', NULL, -22.9068, -43.1729);
 
 
 -- NOVOS DADOS DE PRESTADORES FORNECIDOS PELO USUÁRIO (IDs 1 a 5)
 INSERT INTO prestadores (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, raioAtuacao, status_disponibilidade, latitude, longitude) VALUES
-('Carlos Eletricista', '12345678932', 'carlos.eletricista@gmail.com','$2b$10$LHgqzjbUnpeNWOITqkakP.0lufzJxGP6r/NtLjLH9rwMvN8N3VCI6', '21988030405', '27351000', 'Loja 1', '1000', NULL, 15.0, 'online', -23.5613, -46.6560), -- ID 1
-('Paulo Alvenaria', '11223344556', 'paulo.alvenaria@gmail.com', '$2b$10$HPRAhr8PFvLDguHCbTUD3eM8lLOd16uv9RB/StlHvuly8UoGK6t4e', '21999543210', '23520000', 'APT 201', 'sala 30', NULL, 10.5, 'online', -22.9133, -43.1792), -- ID 2
-('Maria Faxineira', '12345678912', 'maria.faxineira@gmail.com', '$2b$10$2TpK8IuwjsOQWmDAZidKqOsQRY26WdGXIFvPz5/kKCya5nHKU0OaO', '24999887766', '27356000', 'APT 301', 'sala 10', NULL, 10.5, 'online', -22.9133, -43.1792), -- ID 3
-('Rafael Pinturas', '12366677788', 'rafael.pinturas@gmail.com', '$2b$10$y8k/dVmTTIyYpRvgIISzSOx7.Fxt/TcQSpdIMOTVXXn70MLuCHoFy', '21998877665', '27350000', 'Loja 10', '1000', NULL, 15.0, 'online', -23.5613, -46.6560), -- ID 4
-('Roberto Reparos', '21999050607', 'roberto.reparos@gmail.com', '$2b$10$j2BQaz6UHCGi/88sdG6BS.gq0IUjbdWqAmC6ui0vKQ72M3Wyzar/S', '24999010203', '27232000', 'Casa 01', '52', NULL, 15.0, 'online', -23.5613, -46.6560); -- ID 5
+('Carlos Eletricista', '12345678932', 'carlos.eletricista@gmail.com','$2b$10$PnSWbnkpVhYmoelTETF0ZuKN53I/7r/5HuLglEPw1tOItfaNZLXdO', '21988030405', '27351000', 'Loja 1', '1000', NULL, 15.0, 'online', -23.5613, -46.6560), -- ID 1
+('Paulo Alvenaria', '11223344556', 'paulo.alvenaria@gmail.com', '$2b$10$Dj0x7wGH.Es037dg.zNEmuewR2DfY.8d2Kb4XIu49OFehtjSmST0i', '21999543210', '23520000', 'APT 201', 'sala 30', NULL, 10.5, 'online', -22.9133, -43.1792), -- ID 2
+('Maria Faxineira', '12345678912', 'maria.faxineira@gmail.com', '$2b$10$J9o95KhKS8/TzorYIXnZSuzNu336LAPPm01KHoWwvFy1Hd1piuUY2', '24999887766', '27356000', 'APT 301', 'sala 10', NULL, 10.5, 'online', -22.9133, -43.1792), -- ID 3
+('Rafael Pinturas', '12366677788', 'rafael.pinturas@gmail.com', '$2b$10$6yLXqOsV7/AhO4Hpshz15ez/nNeSi0Fq6vO7QjymNWkuoWXJcjR5O', '21998877665', '27350000', 'Loja 10', '1000', NULL, 15.0, 'online', -23.5613, -46.6560), -- ID 4
+('Roberto Reparos', '21999050607', 'roberto.reparos@gmail.com', '$2b$10$9lTD.S7d8Yclxmm3VvFgeejyKJ.xvf0OgI39.fV509GiWjx5lIB/i', '24999010203', '27232000', 'Casa 01', '52', NULL, 15.0, 'online', -23.5613, -46.6560); -- ID 5
 
 INSERT INTO categorias_servico (nome, icone_url) VALUES
 ('Elétrica', 'https://placehold.co/40x40/000000/FFFFFF?text=Eletrica'),
@@ -217,8 +218,8 @@ INSERT INTO categorias_servico (nome, icone_url) VALUES
 -- Inserir serviços oferecidos de exemplo (ajustados para os novos prestador_id)
 INSERT INTO servicos_oferecidos (prestador_id, categoria_id, titulo, descricao, valor_estimado, ativo, disponibilidade) VALUES
 (1, 1, 'Instalação de Tomadas e Interruptores', 'Instalação e reparo de tomadas e interruptores residenciais e comerciais.', 150.00, TRUE, 'disponivel'), -- Carlos Eletricista (ID 1)
-(1, 2, 'Desentupimento de Pia', 'Desentupimento de pias e ralos com equipamentos profissionais.', 200.00, TRUE, 'disponivel'), -- Carlos Eletricista (ID 1)
-(1, 1, 'Manutenção Elétrica Geral', 'Serviços de manutenção elétrica preventiva e corretiva.', 180.00, TRUE, 'disponivel'),
+(5, 2, 'Desentupimento de Pia', 'Desentupimento de pias e ralos com equipamentos profissionais.', 200.00, TRUE, 'disponivel'), -- Carlos Eletricista (ID 1)
+(1, 1, 'Manutenção Elétrica Geral', 'Serviços de manutenção elétrica preventiva e corretiva.', 180.00, TRUE, 'disponivel'), -- Paulo Alvenaria (ID 2)
 (3, 3, 'Limpeza Pós-Obra', 'Limpeza completa de ambientes após reformas e construções.', 350.00, TRUE, 'disponivel'), -- Maria Faxineira (ID 3)
 (4, 5, 'Pintura de Paredes Internas', 'Pintura profissional de paredes internas com acabamento de qualidade.', 250.00, TRUE, 'disponivel'), -- Rafael Pinturas (ID 4)
 (5, 2, 'Reparo de Vazamentos', 'Reparo rápido e eficiente de vazamentos em tubulações e torneiras.', 120.00, TRUE, 'disponivel'); -- Roberto Reparos (ID 5)
