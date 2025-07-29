@@ -1,58 +1,47 @@
 import mensagensRepository from "../repositories/mensagensRepository.js";
 import solicitacoesRepository from "../repositories/solicitacoesRepository.js";
-import clientesRepository from "../repositories/clientesRepository.js";
-import prestadoresRepository from "../repositories/prestadoresRepository.js";
+import { Server } from 'socket.io'; // Importar Server do socket.io
+
+// A instância do io precisa ser passada para o controller.
+// Uma forma comum é exportar uma função que inicializa o controller com o io.
+let ioInstance;
 
 const mensagensController = {
+    // Método para injetar a instância do Socket.IO
+    setIoInstance: (io) => {
+        ioInstance = io;
+    },
+
     /**
-     * @description Envia uma nova mensagem. O remetente é o usuário logado.
-     * Pode incluir texto e/ou uma foto.
-     * @param {Object} req - Objeto de requisição (body: { solicitacao_id, conteudo }, file: imagem).
+     * @description Envia uma nova mensagem para uma solicitação de serviço.
+     * Esta rota será chamada via HTTP (REST) e também emitirá a mensagem via Socket.IO.
+     * @param {Object} req - Objeto de requisição (body: { solicitacao_id, conteudo, foto_url }).
      * @param {Object} res - Objeto de resposta.
      */
-    createMensagem: async (req, res) => {
+    sendMensagem: async (req, res) => {
+        const { solicitacao_id, conteudo, foto_url } = req.body;
         const remetente_id = req.user.id; // ID do usuário logado (cliente ou prestador)
-        const remetente_tipo = req.user.tipo; // Tipo do usuário logado (cliente ou prestador)
-        const { solicitacao_id, conteudo } = req.body;
-        const file = req.file; // O arquivo da imagem (se houver)
+        const remetente_tipo = req.user.tipo; // Tipo do usuário logado ('cliente' ou 'prestador')
 
         const erros = [];
         if (!solicitacao_id || isNaN(parseInt(solicitacao_id))) {
             erros.push("ID da solicitação é obrigatório e deve ser um número.");
         }
-        // Validação: Pelo menos um entre conteúdo ou foto deve existir
-        if (!conteudo && !file) {
-            erros.push("A mensagem deve conter texto ou uma imagem.");
+        if (!conteudo && !foto_url) {
+            erros.push("Conteúdo ou URL da foto é obrigatório.");
         }
-        if (conteudo && conteudo.trim().length > 1000) {
-            erros.push("O conteúdo da mensagem não pode exceder 1000 caracteres.");
+        if (conteudo && conteudo.trim().length === 0 && !foto_url) {
+            erros.push("Conteúdo não pode ser vazio se não houver foto.");
         }
 
         if (erros.length > 0) {
-            // Se houver erros e um arquivo foi enviado, remova o arquivo para evitar lixo
-            if (file) {
-                // Importe 'fs' para remover o arquivo
-                const fs = await import('fs/promises');
-                await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
-            }
             return res.status(400).json({ status: 400, ok: false, message: erros });
         }
 
-        let foto_url = null;
         try {
-            // Se houver um arquivo, faça o upload para o Firebase Storage
-            if (file) {
-                foto_url = await uploadFileToFirebase(file);
-            }
-
-            // 1. Verificar se a solicitação existe e se o remetente é participante dela
+            // 1. Validar se a solicitação existe e obter os IDs dos participantes
             const solicitacaoResult = await solicitacoesRepository.getById(solicitacao_id);
             if (!solicitacaoResult.ok || !solicitacaoResult.data) {
-                // Se a solicitação não for encontrada, remova o arquivo
-                if (file) {
-                    const fs = await import('fs/promises');
-                    await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
-                }
                 return res.status(404).json({ status: 404, ok: false, message: "Solicitação de serviço não encontrada." });
             }
             const solicitacao = solicitacaoResult.data;
@@ -61,184 +50,96 @@ const mensagensController = {
             let destinatario_id;
             let destinatario_tipo;
 
-            if (remetente_tipo === 'cliente') {
-                // Se o remetente é cliente, o destinatário deve ser o prestador aceito na solicitação
-                if (!solicitacao.prestador_id_aceito) {
-                    if (file) {
-                        const fs = await import('fs/promises');
-                        await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
-                    }
-                    return res.status(400).json({ status: 400, ok: false, message: "Não é possível enviar mensagem: esta solicitação ainda não foi aceita por um prestador." });
-                }
+            if (remetente_tipo === 'cliente' && solicitacao.prestador_id_aceito) {
                 destinatario_id = solicitacao.prestador_id_aceito;
                 destinatario_tipo = 'prestador';
-            } else if (remetente_tipo === 'prestador') {
-                // Se o remetente é prestador, o destinatário deve ser o cliente da solicitação
+            } else if (remetente_tipo === 'prestador' && solicitacao.cliente_id) {
                 destinatario_id = solicitacao.cliente_id;
                 destinatario_tipo = 'cliente';
             } else {
-                if (file) {
-                    const fs = await import('fs/promises');
-                    await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
-                }
-                return res.status(400).json({ status: 400, ok: false, message: "Tipo de remetente inválido." });
+                return res.status(400).json({ status: 400, ok: false, message: "Não foi possível determinar o destinatário da mensagem. Verifique se a solicitação tem um prestador aceito." });
             }
 
-            // Validação de que o remetente é um participante válido da conversa
-            const isParticipant =
-                (remetente_tipo === 'cliente' && solicitacao.cliente_id === remetente_id) ||
-                (remetente_tipo === 'prestador' && solicitacao.prestador_id_aceito === remetente_id);
-
-            if (!isParticipant) {
-                if (file) {
-                    const fs = await import('fs/promises');
-                    await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
-                }
-                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é participante desta solicitação." });
-            }
-
-            const newMensagem = {
-                solicitacao_id: parseInt(solicitacao_id),
+            // 2. Criar a mensagem no banco de dados
+            const mensagemObj = {
+                solicitacao_id: solicitacao_id,
                 remetente_id: remetente_id,
                 remetente_tipo: remetente_tipo,
                 destinatario_id: destinatario_id,
                 destinatario_tipo: destinatario_tipo,
-                conteudo: conteudo ? conteudo.trim() : null, // Conteúdo pode ser nulo se for só foto
-                foto_url: foto_url // Passa a URL da foto local
+                conteudo: conteudo,
+                foto_url: foto_url
             };
 
-            const result = await mensagensRepository.create(newMensagem);
-            res.status(result.status).json(result);
-        } catch (error) {
-            console.error("Erro no controller ao criar mensagem:", error);
-            // Se o erro ocorreu após o upload, remova o arquivo
-            if (file && file.path) {
-                const fs = await import('fs/promises');
-                await fs.unlink(file.path).catch(err => console.error("Erro ao deletar arquivo de upload falho:", err));
+            const result = await mensagensRepository.createMensagem(mensagemObj);
+
+            if (result.ok) {
+                // 3. Emitir a mensagem via Socket.IO para a sala da solicitação
+                if (ioInstance) {
+                    const messageData = {
+                        ...result.data, // Dados da mensagem salva no DB
+                        remetente_nome: req.user.nome, // Adiciona o nome do remetente para exibição no frontend
+                        // Você pode adicionar mais dados do remetente/destinatário aqui se precisar
+                    };
+                    ioInstance.to(solicitacao_id.toString()).emit('message', messageData);
+                    console.log(`[Socket.IO] Mensagem emitida para sala ${solicitacao_id}:`, messageData);
+                } else {
+                    console.warn("[Socket.IO] Instância do Socket.IO não disponível no controller. Mensagem não emitida em tempo real.");
+                }
+                res.status(result.status).json(result);
+            } else {
+                res.status(result.status).json(result);
             }
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao criar mensagem ou fazer upload da foto." });
+
+        } catch (error) {
+            console.error("Erro no controller ao enviar mensagem:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao enviar mensagem." });
         }
     },
 
     /**
-     * @description Obtém todas as mensagens para uma solicitação específica.
-     * Apenas participantes da solicitação podem ver as mensagens.
+     * @description Obtém todas as mensagens para uma solicitação de serviço específica.
      * @param {Object} req - Objeto de requisição (params: { solicitacao_id }).
      * @param {Object} res - Objeto de resposta.
      */
     getMensagensBySolicitacao: async (req, res) => {
         const solicitacao_id = parseInt(req.params.solicitacao_id);
+        const user_id = req.user.id;
+        const user_tipo = req.user.tipo;
+
         if (isNaN(solicitacao_id)) {
             return res.status(400).json({ status: 400, ok: false, message: "ID da solicitação inválido." });
         }
 
-        const userId = req.user.id;
-        const userTipo = req.user.tipo;
-
         try {
-            // 1. Verificar se a solicitação existe
+            // 1. Validar se o usuário logado pertence a esta solicitação
             const solicitacaoResult = await solicitacoesRepository.getById(solicitacao_id);
             if (!solicitacaoResult.ok || !solicitacaoResult.data) {
                 return res.status(404).json({ status: 404, ok: false, message: "Solicitação de serviço não encontrada." });
             }
             const solicitacao = solicitacaoResult.data;
 
-            // 2. Verificar se o usuário logado é participante da solicitação
-            const isParticipant =
-                (userTipo === 'cliente' && solicitacao.cliente_id === userId) ||
-                (userTipo === 'prestador' && solicitacao.prestador_id_aceito === userId);
-
-            if (!isParticipant) {
-                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é participante desta solicitação." });
+            if (user_tipo === 'cliente' && solicitacao.cliente_id !== user_id) {
+                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o cliente desta solicitação." });
+            }
+            if (user_tipo === 'prestador' && solicitacao.prestador_id_aceito !== user_id) {
+                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o prestador desta solicitação." });
             }
 
-            const result = await mensagensRepository.getAll({ solicitacao_id: solicitacao_id });
-            res.status(result.status).json(result);
+            // 2. Obter as mensagens do banco de dados
+            const result = await mensagensRepository.getMensagensBySolicitacaoId(solicitacao_id);
+
+            if (result.ok) {
+                // 3. Marcar as mensagens como lidas para o usuário que está buscando
+                await mensagensRepository.markMessagesAsRead(solicitacao_id, user_id, user_tipo);
+                res.status(result.status).json(result);
+            } else {
+                res.status(result.status).json(result);
+            }
+
         } catch (error) {
             console.error("Erro no controller ao obter mensagens por solicitação:", error);
             res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao obter mensagens." });
-        }
-    },
-
-    /**
-     * @description Marca uma mensagem como lida.
-     * @param {Object} req - Objeto de requisição (params: { id }).
-     * @param {Object} res - Objeto de resposta.
-     */
-    markMensagemAsRead: async (req, res) => {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            return res.status(400).json({ status: 400, ok: false, message: "ID da mensagem inválido." });
-        }
-
-        // O middleware de autenticação deve popular req.user
-        const userId = req.user.id; // CORRIGIDO: Acessando req.user.id
-        const userTipo = req.user.tipo; // CORRIGIDO: Acessando req.user.tipo
-
-        console.log(`[DEBUG - Controller] Tentando marcar mensagem ${id} como lida.`);
-        console.log(`[DEBUG - Controller] Usuário logado: ID=${userId}, Tipo=${userTipo}`);
-
-
-        try {
-            const mensagemResult = await mensagensRepository.getById(id);
-            if (!mensagemResult.ok || !mensagemResult.data) {
-                return res.status(mensagemResult.status).json(mensagemResult);
-            }
-            const mensagem = mensagemResult.data;
-
-            // Apenas o destinatário da mensagem pode marcá-la como lida
-            if (mensagem.destinatario_id !== userId || mensagem.destinatario_tipo !== userTipo) {
-                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o destinatário desta mensagem." });
-            }
-
-            // CORRIGIDO: Passando userId e userTipo para o repositório
-            const result = await mensagensRepository.markAsRead(id, userId, userTipo);
-            res.status(result.status).json(result);
-        } catch (error) {
-            console.error("Erro no controller ao marcar mensagem como lida:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao marcar mensagem como lida." });
-        }
-    },
-
-    /**
-     * @description Deleta uma mensagem. Apenas o remetente pode deletar.
-     * @param {Object} req - Objeto de requisição (params: { id }).
-     * @param {Object} res - Objeto de resposta.
-     */
-    deleteMensagem: async (req, res) => {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            return res.status(400).json({ status: 400, ok: false, message: "ID da mensagem inválido." });
-        }
-
-        const userId = req.user.id;
-        const userTipo = req.user.tipo;
-
-        try {
-            const mensagemResult = await mensagensRepository.getById(id);
-            if (!mensagemResult.ok || !mensagemResult.data) {
-                return res.status(mensagemResult.status).json(mensagemResult);
-            }
-            const mensagem = mensagemResult.data;
-
-            // Apenas o remetente da mensagem pode deletá-la
-            if (mensagem.remetente_id !== userId || mensagem.remetente_tipo !== userTipo) {
-                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não tem permissão para deletar esta mensagem." });
-            }
-
-            const result = await mensagensRepository.delete(id);
-            // Se a mensagem deletada tinha uma foto, remova o arquivo do disco
-            if (result.ok && mensagem.foto_url) {
-                const fs = await import('fs/promises');
-                // Extrai o nome do arquivo da URL para deletar
-                const filename = path.basename(mensagem.foto_url);
-                const filePath = path.join(path.resolve(__dirname, '../../'), 'uploads', filename);
-                await fs.unlink(filePath).catch(err => console.error("Erro ao deletar arquivo de foto:", err));
-            }
-            res.status(result.status).json(result);
-        } catch (error) {
-            console.error("Erro no controller ao deletar mensagem:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao deletar mensagem." });
         }
     }
 };

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobConnect Chat Test</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            height: 70vh;
+        }
+        .messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+            border-bottom: 1px solid #eee;
+            background-color: #e9e9e9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .message.sent {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        .message.received {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            align-self: flex-start;
+        }
+        .message strong {
+            display: block;
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .input-area {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+        .input-area input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-right: 10px;
+            font-size: 1em;
+        }
+        .input-area button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .input-area button:hover {
+            background-color: #0056b3;
+        }
+        .room-selection {
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .room-selection input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .room-selection button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .room-selection button:hover {
+            background-color: #218838;
+        }
+        h1 { text-align: center; color: #007bff; }
+    </style>
+</head>
+<body>
+    <h1>JobConnect Chat Test</h1>
+
+    <div class="chat-container">
+        <div class="room-selection">
+            <label for="solicitacaoIdInput">ID da Solicitação:</label>
+            <input type="number" id="solicitacaoIdInput" value="1" placeholder="ID da Solicitação">
+            <label for="remetenteIdInput">Seu ID:</label>
+            <input type="number" id="remetenteIdInput" value="1" placeholder="Seu ID">
+            <label for="remetenteTipoInput">Seu Tipo:</label>
+            <select id="remetenteTipoInput">
+                <option value="cliente">cliente</option>
+                <option value="prestador">prestador</option>
+            </select>
+            <label for="destinatarioIdInput">ID Destinatário:</label>
+            <input type="number" id="destinatarioIdInput" value="1" placeholder="ID Destinatário">
+            <label for="destinatarioTipoInput">Tipo Destinatário:</label>
+            <select id="destinatarioTipoInput">
+                <option value="prestador">prestador</option>
+                <option value="cliente">cliente</option>
+            </select>
+            <button id="joinRoomButton">Entrar na Sala</button>
+        </div>
+
+        <div class="messages" id="messages">
+            <!-- Mensagens serão exibidas aqui -->
+        </div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
+            <button id="sendButton">Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:3000'); // Conecta ao seu backend Socket.IO
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const solicitacaoIdInput = document.getElementById('solicitacaoIdInput');
+        const remetenteIdInput = document.getElementById('remetenteIdInput');
+        const remetenteTipoInput = document.getElementById('remetenteTipoInput');
+        const destinatarioIdInput = document.getElementById('destinatarioIdInput');
+        const destinatarioTipoInput = document.getElementById('destinatarioTipoInput');
+        const joinRoomButton = document.getElementById('joinRoomButton');
+
+        let currentSolicitacaoId = null;
+
+        // Função para adicionar mensagem ao chat
+        function addMessage(msg) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            // Determina se a mensagem foi enviada por este cliente para aplicar estilo
+            if (msg.remetente_id == remetenteIdInput.value && msg.remetente_tipo == remetenteTipoInput.value) {
+                messageElement.classList.add('sent');
+            } else {
+                messageElement.classList.add('received');
+            }
+
+            const senderInfo = document.createElement('strong');
+            senderInfo.textContent = `${msg.remetente_tipo === 'cliente' ? 'Cliente' : 'Prestador'} ${msg.remetente_id}:`;
+            messageElement.appendChild(senderInfo);
+
+            const content = document.createElement('p');
+            content.textContent = msg.conteudo;
+            messageElement.appendChild(content);
+
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Rola para o final
+        }
+
+        // Evento de conexão do Socket.IO
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor Socket.IO');
+            // Tenta entrar na sala padrão ao conectar
+            if (solicitacaoIdInput.value) {
+                currentSolicitacaoId = solicitacaoIdInput.value;
+                socket.emit('joinRoom', currentSolicitacaoId);
+            }
+        });
+
+        // Evento para entrar na sala
+        joinRoomButton.addEventListener('click', () => {
+            const newSolicitacaoId = solicitacaoIdInput.value;
+            if (newSolicitacaoId && newSolicitacaoId !== currentSolicitacaoId) {
+                if (currentSolicitacaoId) {
+                    socket.leave(currentSolicitacaoId); // Sair da sala anterior
+                    console.log(`Saiu da sala: ${currentSolicitacaoId}`);
+                }
+                currentSolicitacaoId = newSolicitacaoId;
+                socket.emit('joinRoom', currentSolicitacaoId);
+                messagesDiv.innerHTML = ''; // Limpa as mensagens ao mudar de sala
+                console.log(`Entrou na sala: ${currentSolicitacaoId}`);
+                // Em um cenário real, você faria uma requisição HTTP para carregar o histórico da nova sala aqui.
+            } else if (newSolicitacaoId && !currentSolicitacaoId) {
+                currentSolicitacaoId = newSolicitacaoId;
+                socket.emit('joinRoom', currentSolicitacaoId);
+                console.log(`Entrou na sala: ${currentSolicitacaoId}`);
+            }
+        });
+
+
+        // Evento para receber mensagens do servidor
+        socket.on('message', (msg) => {
+            console.log('Mensagem recebida:', msg);
+            addMessage(msg);
+        });
+
+        // Evento para enviar mensagem
+        sendButton.addEventListener('click', () => {
+            sendMessage();
+        });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const conteudo = messageInput.value.trim();
+            const solicitacao_id = solicitacaoIdInput.value;
+            const remetente_id = remetenteIdInput.value;
+            const remetente_tipo = remetenteTipoInput.value;
+            const destinatario_id = destinatarioIdInput.value;
+            const destinatario_tipo = destinatarioTipoInput.value;
+
+            if (conteudo && solicitacao_id && remetente_id && remetente_tipo && destinatario_id && destinatario_tipo) {
+                const message = {
+                    solicitacao_id: parseInt(solicitacao_id),
+                    remetente_id: parseInt(remetente_id),
+                    remetente_tipo: remetente_tipo,
+                    destinatario_id: parseInt(destinatario_id),
+                    destinatario_tipo: destinatario_tipo,
+                    conteudo: conteudo,
+                    foto_url: null // Por enquanto, sem funcionalidade de foto
+                };
+
+                // Envia a mensagem via Socket.IO
+                socket.emit('chatMessage', message);
+                messageInput.value = ''; // Limpa o input
+            } else {
+                alert('Por favor, preencha todos os campos de chat e sala.');
+            }
+        }
+
+        // Carregar histórico de mensagens ao entrar na sala (via HTTP REST)
+        // Esta parte simula como você carregaria mensagens existentes ao abrir o chat.
+        // Você precisaria de um token JWT válido para esta requisição.
+        async function loadMessageHistory(solicitacaoId, token) {
+            if (!solicitacaoId || !token) {
+                console.warn("Não foi possível carregar o histórico: ID da solicitação ou token ausente.");
+                return;
+            }
+            try {
+                const response = await fetch(`http://localhost:3000/mensagens/${solicitacaoId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                if (data.ok && data.data) {
+                    messagesDiv.innerHTML = ''; // Limpa mensagens existentes
+                    data.data.forEach(msg => addMessage(msg));
+                    console.log('Histórico de mensagens carregado.');
+                } else {
+                    console.error('Erro ao carregar histórico de mensagens:', data.message);
+                }
+            } catch (error) {
+                console.error('Erro de rede ao carregar histórico de mensagens:', error);
+            }
+        }
+
+        // Exemplo de como você chamaria loadMessageHistory após obter um token
+        // Para testar, você precisará obter um token JWT (de cliente ou prestador)
+        // e colá-lo aqui ou ter uma forma de obtê-lo no frontend.
+        // Por exemplo:
+        // const CLIENT_JWT_TOKEN = 'SEU_TOKEN_JWT_AQUI';
+        // loadMessageHistory(solicitacaoIdInput.value, CLIENT_JWT_TOKEN);
+
+
+    </script>
+</body>
+</html>
