@@ -80,10 +80,11 @@
             background-color: #f0f0f0;
             border-bottom: 1px solid #ddd;
             display: flex;
+            flex-wrap: wrap; /* Permite que os itens quebrem a linha */
             gap: 10px;
             align-items: center;
         }
-        .room-selection input {
+        .room-selection input, .room-selection select {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -100,12 +101,29 @@
             background-color: #218838;
         }
         h1 { text-align: center; color: #007bff; }
+        .token-area {
+            padding: 10px 15px;
+            background-color: #e2e6ea;
+            border-bottom: 1px solid #ddd;
+        }
+        .token-area input {
+            width: calc(100% - 20px);
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <h1>JobConnect Chat Test</h1>
 
     <div class="chat-container">
+        <div class="token-area">
+            <label for="jwtTokenInput">Token JWT (Cliente ou Prestador):</label>
+            <input type="text" id="jwtTokenInput" placeholder="Cole seu token JWT aqui">
+        </div>
+
         <div class="room-selection">
             <label for="solicitacaoIdInput">ID da Solicitação:</label>
             <input type="number" id="solicitacaoIdInput" value="1" placeholder="ID da Solicitação">
@@ -124,6 +142,7 @@
                 <option value="cliente">cliente</option>
             </select>
             <button id="joinRoomButton">Entrar na Sala</button>
+            <button id="loadHistoryButton">Carregar Histórico</button>
         </div>
 
         <div class="messages" id="messages">
@@ -146,6 +165,9 @@
         const destinatarioIdInput = document.getElementById('destinatarioIdInput');
         const destinatarioTipoInput = document.getElementById('destinatarioTipoInput');
         const joinRoomButton = document.getElementById('joinRoomButton');
+        const jwtTokenInput = document.getElementById('jwtTokenInput');
+        const loadHistoryButton = document.getElementById('loadHistoryButton');
+
 
         let currentSolicitacaoId = null;
 
@@ -161,11 +183,21 @@
             }
 
             const senderInfo = document.createElement('strong');
-            senderInfo.textContent = `${msg.remetente_tipo === 'cliente' ? 'Cliente' : 'Prestador'} ${msg.remetente_id}:`;
+            // Tenta usar nome_remetente_cliente/prestador se disponível, senão usa ID e Tipo
+            const senderName = msg.nome_remetente_cliente || msg.nome_remetente_prestador || `${msg.remetente_tipo} ${msg.remetente_id}`;
+            senderInfo.textContent = `${senderName}:`;
             messageElement.appendChild(senderInfo);
 
             const content = document.createElement('p');
-            content.textContent = msg.conteudo;
+            if (msg.conteudo) {
+                content.textContent = msg.conteudo;
+            } else if (msg.foto_url) {
+                const img = document.createElement('img');
+                img.src = msg.foto_url;
+                img.style.maxWidth = '100%';
+                img.style.borderRadius = '8px';
+                content.appendChild(img);
+            }
             messageElement.appendChild(content);
 
             messagesDiv.appendChild(messageElement);
@@ -194,19 +226,31 @@
                 socket.emit('joinRoom', currentSolicitacaoId);
                 messagesDiv.innerHTML = ''; // Limpa as mensagens ao mudar de sala
                 console.log(`Entrou na sala: ${currentSolicitacaoId}`);
-                // Em um cenário real, você faria uma requisição HTTP para carregar o histórico da nova sala aqui.
+                // Carregar histórico após entrar na nova sala
+                loadMessageHistory(currentSolicitacaoId, jwtTokenInput.value);
             } else if (newSolicitacaoId && !currentSolicitacaoId) {
                 currentSolicitacaoId = newSolicitacaoId;
                 socket.emit('joinRoom', currentSolicitacaoId);
                 console.log(`Entrou na sala: ${currentSolicitacaoId}`);
+                loadMessageHistory(currentSolicitacaoId, jwtTokenInput.value);
             }
+        });
+
+        // Botão para carregar histórico
+        loadHistoryButton.addEventListener('click', () => {
+            loadMessageHistory(solicitacaoIdInput.value, jwtTokenInput.value);
         });
 
 
         // Evento para receber mensagens do servidor
         socket.on('message', (msg) => {
-            console.log('Mensagem recebida:', msg);
+            console.log('Mensagem recebida via Socket.IO:', msg);
             addMessage(msg);
+            // Marcar mensagem como lida (opcional, pode ser feito no frontend ou backend)
+            // Se a mensagem for para o usuário atual e não foi enviada por ele mesmo
+            if (msg.destinatario_id == remetenteIdInput.value && msg.destinatario_tipo == remetenteTipoInput.value && !msg.lida) {
+                markMessageAsRead(msg.id, jwtTokenInput.value);
+            }
         });
 
         // Evento para enviar mensagem
@@ -220,43 +264,66 @@
             }
         });
 
-        function sendMessage() {
+        async function sendMessage() {
             const conteudo = messageInput.value.trim();
             const solicitacao_id = solicitacaoIdInput.value;
             const remetente_id = remetenteIdInput.value;
             const remetente_tipo = remetenteTipoInput.value;
             const destinatario_id = destinatarioIdInput.value;
             const destinatario_tipo = destinatarioTipoInput.value;
+            const jwtToken = jwtTokenInput.value;
 
-            if (conteudo && solicitacao_id && remetente_id && remetente_tipo && destinatario_id && destinatario_tipo) {
-                const message = {
-                    solicitacao_id: parseInt(solicitacao_id),
-                    remetente_id: parseInt(remetente_id),
-                    remetente_tipo: remetente_tipo,
-                    destinatario_id: parseInt(destinatario_id),
-                    destinatario_tipo: destinatario_tipo,
-                    conteudo: conteudo,
-                    foto_url: null // Por enquanto, sem funcionalidade de foto
-                };
+            if (!conteudo || !solicitacao_id || !remetente_id || !remetente_tipo || !destinatario_id || !destinatario_tipo || !jwtToken) {
+                alert('Por favor, preencha todos os campos (incluindo o Token JWT) antes de enviar a mensagem.');
+                return;
+            }
 
-                // Envia a mensagem via Socket.IO
-                socket.emit('chatMessage', message);
-                messageInput.value = ''; // Limpa o input
-            } else {
-                alert('Por favor, preencha todos os campos de chat e sala.');
+            const messageData = {
+                solicitacao_id: parseInt(solicitacao_id),
+                conteudo: conteudo,
+                // foto_url: null // Por enquanto, sem funcionalidade de foto
+            };
+
+            try {
+                // 1. Enviar mensagem via HTTP POST para persistir no banco de dados
+                const response = await fetch('http://localhost:3000/mensagens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify(messageData)
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    console.log('Mensagem persistida via HTTP POST:', result.data);
+                    messageInput.value = ''; // Limpa o input
+
+                    // 2. Opcional: Emitir a mensagem via Socket.IO (se o backend não re-emitir automaticamente)
+                    // No seu backend atual, o controller já emite via Socket.IO após salvar.
+                    // Se o backend não emitisse, você faria algo como:
+                    // socket.emit('chatMessage', result.data); // Emite a mensagem completa com ID e timestamp do DB
+                } else {
+                    alert(`Erro ao enviar mensagem via HTTP: ${result.message || 'Erro desconhecido'}`);
+                    console.error('Erro ao enviar mensagem via HTTP:', result);
+                }
+            } catch (error) {
+                console.error('Erro de rede ao enviar mensagem:', error);
+                alert('Erro de rede ao enviar mensagem. Verifique o console.');
             }
         }
 
         // Carregar histórico de mensagens ao entrar na sala (via HTTP REST)
-        // Esta parte simula como você carregaria mensagens existentes ao abrir o chat.
-        // Você precisaria de um token JWT válido para esta requisição.
         async function loadMessageHistory(solicitacaoId, token) {
+            messagesDiv.innerHTML = ''; // Limpa mensagens existentes ao carregar histórico
             if (!solicitacaoId || !token) {
                 console.warn("Não foi possível carregar o histórico: ID da solicitação ou token ausente.");
                 return;
             }
             try {
-                const response = await fetch(`http://localhost:3000/mensagens/${solicitacaoId}`, {
+                const response = await fetch(`http://localhost:3000/mensagens/solicitacao/${solicitacaoId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -264,7 +331,6 @@
                 });
                 const data = await response.json();
                 if (data.ok && data.data) {
-                    messagesDiv.innerHTML = ''; // Limpa mensagens existentes
                     data.data.forEach(msg => addMessage(msg));
                     console.log('Histórico de mensagens carregado.');
                 } else {
@@ -275,14 +341,31 @@
             }
         }
 
-        // Exemplo de como você chamaria loadMessageHistory após obter um token
-        // Para testar, você precisará obter um token JWT (de cliente ou prestador)
-        // e colá-lo aqui ou ter uma forma de obtê-lo no frontend.
-        // Por exemplo:
-        // const CLIENT_JWT_TOKEN = 'SEU_TOKEN_JWT_AQUI';
-        // loadMessageHistory(solicitacaoIdInput.value, CLIENT_JWT_TOKEN);
-
-
+        // Função para marcar mensagem como lida via HTTP PUT
+        async function markMessageAsRead(messageId, token) {
+            if (!messageId || !token) {
+                console.warn("Não foi possível marcar mensagem como lida: ID da mensagem ou token ausente.");
+                return;
+            }
+            try {
+                const response = await fetch(`http://localhost:3000/mensagens/${messageId}/read`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                if (data.ok) {
+                    console.log(`Mensagem ${messageId} marcada como lida.`);
+                    // Opcional: Atualizar a UI para refletir que a mensagem foi lida
+                } else {
+                    console.error(`Erro ao marcar mensagem ${messageId} como lida:`, data.message);
+                }
+            } catch (error) {
+                console.error(`Erro de rede ao marcar mensagem ${messageId} como lida:`, error);
+            }
+        }
     </script>
 </body>
 </html>
+
