@@ -2,43 +2,39 @@ import conexao from "../database/conexao.js";
 
 const pagamentosRepository = {
     /**
-     * @description Cria uma nova transação no banco de dados.
-     * @param {Object} obj - Dados da transação.
+     * @description Cria um novo registro de pagamento no banco de dados.
+     * Corresponde à transação inicial do cliente para a custódia.
+     * @param {Object} obj - Dados do pagamento (solicitacao_id, cliente_id, prestador_id, valor, metodo_pagamento, status, id_externo_gateway, url_pagamento).
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|string}>}
      */
-    createTransacao: async (obj) => {
-        const sql = `INSERT INTO transacoes (solicitacao_id, conta_custodia_id, remetente_id, remetente_tipo,
-                                            destinatario_id, destinatario_tipo, tipo_transacao, valor, moeda,
-                                            metodo_pagamento, status, id_externo_gateway)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *;`;
+    createPayment: async (obj) => {
+        const sql = `INSERT INTO transacoes (solicitacao_id, remetente_id, remetente_tipo, destinatario_id, destinatario_tipo,
+                                            tipo_transacao, valor, moeda, metodo_pagamento, status, id_externo_gateway, url_pagamento)
+                     VALUES ($1, $2, 'cliente', $3, 'prestador', 'pagamento_servico', $4, 'BRL', $5, $6, $7, $8) RETURNING *;`;
         try {
-            const newTransacao = await conexao.one(sql, [
+            const newPayment = await conexao.one(sql, [
                 obj.solicitacao_id,
-                obj.conta_custodia_id,
-                obj.remetente_id,
-                obj.remetente_tipo,
-                obj.destinatario_id,
-                obj.destinatario_tipo,
-                obj.tipo_transacao,
+                obj.cliente_id,
+                obj.prestador_id,
                 obj.valor,
-                obj.moeda,
                 obj.metodo_pagamento,
                 obj.status,
-                obj.id_externo_gateway
+                obj.id_externo_gateway,
+                obj.url_pagamento
             ]);
             return {
                 status: 201,
                 ok: true,
-                message: 'Transação registrada com sucesso',
-                data: newTransacao
+                message: 'Pagamento registrado com sucesso',
+                data: newPayment
             };
         } catch (error) {
-            console.error('Erro ao criar transação:', error);
+            console.error('Erro ao criar pagamento:', error);
             if (error.code === '23505') { // unique_violation (id_externo_gateway)
                 return {
                     status: 409,
                     ok: false,
-                    message: 'Erro: ID externo do gateway já registrado para outra transação.',
+                    message: 'Erro: ID externo do gateway já registrado para outro pagamento.',
                     sqlMessage: error.message
                 };
             }
@@ -46,120 +42,120 @@ const pagamentosRepository = {
                 return {
                     status: 400,
                     ok: false,
-                    message: 'ID de solicitação ou conta de custódia inválido(a).',
+                    message: 'ID de solicitação, cliente ou prestador inválido(a).',
                     sqlMessage: error.message
                 };
             }
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao criar transação',
+                message: 'Erro de servidor ao criar pagamento',
                 sqlMessage: error.message
             };
         }
     },
 
     /**
-     * @description Atualiza o status de uma transação.
-     * @param {number} id - ID da transação.
-     * @param {string} status - Novo status da transação.
+     * @description Obtém um pagamento pelo ID interno.
+     * @param {number} id - ID do pagamento.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
      */
-    updateTransacaoStatus: async (id, status) => {
-        const sql = `UPDATE transacoes SET status = $1, data_atualizacao = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *;`;
+    getPaymentById: async (id) => {
+        const sql = `SELECT * FROM transacoes WHERE id = $1 AND tipo_transacao = 'pagamento_servico';`;
         try {
-            const updatedTransacao = await conexao.oneOrNone(sql, [status, id]);
-            if (updatedTransacao) {
+            const payment = await conexao.oneOrNone(sql, [id]);
+            if (payment) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Status da transação atualizado com sucesso',
-                    data: updatedTransacao
+                    message: 'Pagamento encontrado com sucesso',
+                    data: payment
                 };
             } else {
                 return {
                     status: 404,
                     ok: false,
-                    message: 'Transação não encontrada para atualização de status',
+                    message: 'Pagamento não encontrado',
                     data: null
                 };
             }
         } catch (error) {
-            console.error('Erro ao atualizar status da transação:', error);
+            console.error('Erro ao buscar pagamento por ID:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao atualizar status da transação',
+                message: 'Erro de servidor ao buscar pagamento por ID',
                 sqlMessage: error.message
             };
         }
     },
 
     /**
-     * @description Obtém uma transação pelo ID.
-     * @param {number} id - ID da transação.
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
-     */
-    getTransacaoById: async (id) => {
-        const sql = `SELECT * FROM transacoes WHERE id = $1;`;
-        try {
-            const transacao = await conexao.oneOrNone(sql, [id]);
-            if (transacao) {
-                return {
-                    status: 200,
-                    ok: true,
-                    message: 'Transação encontrada com sucesso',
-                    data: transacao
-                };
-            } else {
-                return {
-                    status: 404,
-                    ok: false,
-                    message: 'Transação não encontrada',
-                    data: null
-                };
-            }
-        } catch (error) {
-            console.error('Erro ao buscar transação por ID:', error);
-            return {
-                status: 500,
-                ok: false,
-                message: 'Erro de servidor ao buscar transação por ID',
-                sqlMessage: error.message
-            };
-        }
-    },
-
-    /**
-     * @description NOVO MÉTODO: Obtém uma transação pelo ID externo do gateway (Stark Bank).
+     * @description Obtém um pagamento pelo ID externo do gateway.
      * @param {string} externalId - ID da transação no gateway de pagamento.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
      */
-    getTransacaoByExternalId: async (externalId) => {
-        const sql = `SELECT * FROM transacoes WHERE id_externo_gateway = $1;`;
+    getByExternalId: async (externalId) => {
+        const sql = `SELECT * FROM transacoes WHERE id_externo_gateway = $1 AND tipo_transacao = 'pagamento_servico';`;
         try {
-            const transacao = await conexao.oneOrNone(sql, [externalId]);
-            if (transacao) {
+            const payment = await conexao.oneOrNone(sql, [externalId]);
+            if (payment) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Transação encontrada pelo ID externo com sucesso',
-                    data: transacao
+                    message: 'Pagamento encontrado pelo ID externo com sucesso',
+                    data: payment
                 };
             } else {
                 return {
                     status: 404,
                     ok: false,
-                    message: 'Transação não encontrada pelo ID externo',
+                    message: 'Pagamento não encontrado pelo ID externo',
                     data: null
                 };
             }
         } catch (error) {
-            console.error('Erro ao buscar transação por ID externo:', error);
+            console.error('Erro ao buscar pagamento por ID externo:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao buscar transação por ID externo',
+                message: 'Erro de servidor ao buscar pagamento por ID externo',
+                sqlMessage: error.message
+            };
+        }
+    },
+
+    /**
+     * @description Atualiza o status de um pagamento.
+     * @param {number} id - ID do pagamento.
+     * @param {string} status - Novo status do pagamento.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
+     */
+    updatePaymentStatus: async (id, status) => {
+        const sql = `UPDATE transacoes SET status = $1, data_atualizacao = CURRENT_TIMESTAMP WHERE id = $2 AND tipo_transacao = 'pagamento_servico' RETURNING *;`;
+        try {
+            const updatedPayment = await conexao.oneOrNone(sql, [status, id]);
+            if (updatedPayment) {
+                return {
+                    status: 200,
+                    ok: true,
+                    message: 'Status do pagamento atualizado com sucesso',
+                    data: updatedPayment
+                };
+            } else {
+                return {
+                    status: 404,
+                    ok: false,
+                    message: 'Pagamento não encontrado para atualização de status',
+                    data: null
+                };
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar status do pagamento:', error);
+            return {
+                status: 500,
+                ok: false,
+                message: 'Erro de servidor ao atualizar status do pagamento',
                 sqlMessage: error.message
             };
         }
@@ -340,7 +336,7 @@ const pagamentosRepository = {
     },
 
     /**
-     * @description NOVO MÉTODO: Obtém todos os planos de assinatura.
+     * @description Obtém todos os planos de assinatura.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>}
      */
     getAllPlanosAssinatura: async () => {
@@ -366,21 +362,25 @@ const pagamentosRepository = {
 
     /**
      * @description Cria uma nova assinatura para um prestador.
-     * @param {Object} obj - Dados da assinatura (prestador_id, plano_id, data_inicio, data_fim, status, data_ultima_cobranca, proxima_cobranca).
+     * @param {Object} obj - Dados da assinatura (prestador_id, plano_id, data_inicio, data_fim_prevista, valor, metodo_pagamento, status, id_externo_gateway, url_pagamento).
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|string}>}
      */
     createAssinaturaPrestador: async (obj) => {
-        const sql = `INSERT INTO assinaturas_prestadores (prestador_id, plano_id, data_inicio, data_fim, status, data_ultima_cobranca, proxima_cobranca)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`;
+        const sql = `INSERT INTO assinaturas_prestadores (prestador_id, plano_id, data_inicio, data_fim, status, data_ultima_cobranca, proxima_cobranca, valor, metodo_pagamento, id_externo_gateway, url_pagamento)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
         try {
             const newAssinatura = await conexao.one(sql, [
                 obj.prestador_id,
                 obj.plano_id,
                 obj.data_inicio || new Date(),
-                obj.data_fim,
-                obj.status || 'ativo',
-                obj.data_ultima_cobranca,
-                obj.proxima_cobranca
+                obj.data_fim_prevista, // data_fim agora é data_fim_prevista
+                obj.status || 'pendente',
+                obj.data_ultima_cobranca || null,
+                obj.proxima_cobranca || null,
+                obj.valor,
+                obj.metodo_pagamento,
+                obj.id_externo_gateway,
+                obj.url_pagamento
             ]);
             return {
                 status: 201,
@@ -454,75 +454,107 @@ const pagamentosRepository = {
     },
 
     /**
-     * @description Atualiza uma assinatura de prestador.
-     * @param {number} id - ID da assinatura.
-     * @param {Object} obj - Dados para atualização (plano_id, data_fim, status, data_ultima_cobranca, proxima_cobranca).
+     * @description Obtém uma assinatura pelo ID externo do gateway.
+     * @param {string} externalId - ID da cobrança no gateway de pagamento.
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
      */
-    updateAssinaturaPrestador: async (id, obj) => {
-        const fields = [];
-        const params = [];
-        let paramCount = 1;
-
-        if (obj.plano_id !== undefined) {
-            fields.push(`plano_id = $${paramCount++}`);
-            params.push(obj.plano_id);
-        }
-        if (obj.data_fim !== undefined) {
-            fields.push(`data_fim = $${paramCount++}`);
-            params.push(obj.data_fim);
-        }
-        if (obj.status !== undefined) {
-            fields.push(`status = $${paramCount++}`);
-            params.push(obj.status);
-        }
-        if (obj.data_ultima_cobranca !== undefined) {
-            fields.push(`data_ultima_cobranca = $${paramCount++}`);
-            params.push(obj.data_ultima_cobranca);
-        }
-        if (obj.proxima_cobranca !== undefined) {
-            fields.push(`proxima_cobranca = $${paramCount++}`);
-            params.push(obj.proxima_cobranca);
-        }
-
-        if (fields.length === 0) {
-            return { status: 400, ok: false, message: "Nenhum campo para atualizar fornecido para assinatura do prestador." };
-        }
-
-        params.push(id);
-        const sql = `UPDATE assinaturas_prestadores SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *;`;
-
+    getAssinaturaByExternalId: async (externalId) => {
+        const sql = `SELECT * FROM assinaturas_prestadores WHERE id_externo_gateway = $1;`;
         try {
-            const updatedAssinatura = await conexao.oneOrNone(sql, params);
+            const assinatura = await conexao.oneOrNone(sql, [externalId]);
+            if (assinatura) {
+                return {
+                    status: 200,
+                    ok: true,
+                    message: 'Assinatura encontrada pelo ID externo com sucesso',
+                    data: assinatura
+                };
+            } else {
+                return {
+                    status: 404,
+                    ok: false,
+                    message: 'Assinatura não encontrada pelo ID externo',
+                    data: null
+                };
+            }
+        } catch (error) {
+            console.error('Erro ao buscar assinatura por ID externo:', error);
+            return {
+                status: 500,
+                ok: false,
+                message: 'Erro de servidor ao buscar assinatura por ID externo',
+                sqlMessage: error.message
+            };
+        }
+    },
+
+    /**
+     * @description Atualiza o status de uma assinatura de prestador.
+     * @param {number} id - ID da assinatura.
+     * @param {string} status - Novo status da assinatura.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
+     */
+    updateAssinaturaStatus: async (id, status) => {
+        const sql = `UPDATE assinaturas_prestadores SET status = $1, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *;`;
+        try {
+            const updatedAssinatura = await conexao.oneOrNone(sql, [status, id]);
             if (updatedAssinatura) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Assinatura de prestador atualizada com sucesso',
+                    message: 'Status da assinatura atualizado com sucesso',
                     data: updatedAssinatura
                 };
             } else {
                 return {
                     status: 404,
                     ok: false,
-                    message: 'Assinatura de prestador não encontrada para atualização',
+                    message: 'Assinatura não encontrada para atualização de status',
                     data: null
                 };
             }
         } catch (error) {
-            console.error('Erro ao atualizar assinatura de prestador:', error);
-            if (error.code === '23503') { // foreign_key_violation
-                return {
-                    status: 400,
-                    ok: false,
-                    message: 'ID de plano inválido.',
-                    sqlMessage: error.message
-                };
-            }
+            console.error('Erro ao atualizar status da assinatura:', error);
             return {
                 status: 500,
                 ok: false,
-                message: 'Erro de servidor ao atualizar assinatura de prestador',
+                message: 'Erro de servidor ao atualizar status da assinatura',
+                sqlMessage: error.message
+            };
+        }
+    },
+
+    /**
+     * @description Atualiza a data de fim prevista de uma assinatura de prestador.
+     * @param {number} id - ID da assinatura.
+     * @param {Date} dataFim - Nova data de fim prevista.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null}>}
+     */
+    updateAssinaturaDataFim: async (id, dataFim) => {
+        const sql = `UPDATE assinaturas_prestadores SET data_fim = $1, data_ultima_atualizacao = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *;`;
+        try {
+            const updatedAssinatura = await conexao.oneOrNone(sql, [dataFim, id]);
+            if (updatedAssinatura) {
+                return {
+                    status: 200,
+                    ok: true,
+                    message: 'Data de fim da assinatura atualizada com sucesso',
+                    data: updatedAssinatura
+                };
+            } else {
+                return {
+                    status: 404,
+                    ok: false,
+                    message: 'Assinatura não encontrada para atualização da data de fim',
+                    data: null
+                };
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar data de fim da assinatura:', error);
+            return {
+                status: 500,
+                ok: false,
+                message: 'Erro de servidor ao atualizar data de fim da assinatura',
                 sqlMessage: error.message
             };
         }

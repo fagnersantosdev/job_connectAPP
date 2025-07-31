@@ -1,19 +1,19 @@
 import pagamentosRepository from "../repositories/pagamentosRepository.js";
 import solicitacoesRepository from "../repositories/solicitacoesRepository.js";
 import prestadoresRepository from "../repositories/prestadoresRepository.js";
-import starkBankService from "../services/starkBankService.js"; // Importar o serviço Stark Bank (mockado ou real)
+import starkBankService from "../services/starkBankService.js"; // Serviço Stark Bank (mockado ou real)
 
 const pagamentosController = {
     /**
      * @description Inicia um novo pagamento para uma solicitação de serviço.
      * O cliente logado paga o valor proposto ao prestador.
      * Este valor será inicialmente retido em uma conta de custódia.
-     * @param {Object} req - Objeto de requisição (body: { solicitacao_id, metodo_pagamento }).
+     * @param {Object} req - Objeto de requisição (body: { solicitacao_id, metodo_pagamento, valor_pagamento }).
      * @param {Object} res - Objeto de resposta.
      */
     initiatePayment: async (req, res) => {
         const cliente_id = req.user.id; // ID do cliente logado (do JWT)
-        const { solicitacao_id, metodo_pagamento } = req.body;
+        const { solicitacao_id, metodo_pagamento, valor_pagamento } = req.body;
 
         const erros = [];
         if (!solicitacao_id || isNaN(parseInt(solicitacao_id))) {
@@ -23,7 +23,10 @@ const pagamentosController = {
             erros.push("Método de pagamento é obrigatório.");
         }
         if (!['pix', 'boleto', 'cartao_credito', 'transferencia'].includes(metodo_pagamento)) {
-            erros.push("Método de pagamento inválido. Opções: pix, boleto, cartao_credito, transferencia.");
+            erros.push("Método de pagamento inválido. Opções válidas: 'pix', 'boleto', 'cartao_credito', 'transferencia'.");
+        }
+        if (typeof valor_pagamento !== 'number' || valor_pagamento <= 0) {
+            erros.push("Valor do pagamento é obrigatório e deve ser um número positivo.");
         }
 
         if (erros.length > 0) {
@@ -31,7 +34,7 @@ const pagamentosController = {
         }
 
         try {
-            // 1. Obter detalhes da solicitação de serviço
+            // 1. Obter detalhes da solicitação para validação
             const solicitacaoResult = await solicitacoesRepository.getById(solicitacao_id);
             if (!solicitacaoResult.ok || !solicitacaoResult.data) {
                 return res.status(404).json({ status: 404, ok: false, message: "Solicitação de serviço não encontrada." });
@@ -43,96 +46,80 @@ const pagamentosController = {
                 return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o cliente desta solicitação." });
             }
 
-            // 3. Validar status da solicitação (deve estar 'aceita' ou 'proposta' para iniciar pagamento)
-            if (!['aceita', 'proposta'].includes(solicitacao.status)) {
-                return res.status(400).json({ status: 400, ok: false, message: "Não é possível iniciar pagamento para esta solicitação. Status inválido." });
+            // 3. Validar se a solicitação está em um status que permite pagamento (ex: 'aceita', 'aguardando_pagamento')
+            // Adapte esta lógica conforme os status do seu fluxo de solicitação
+            if (solicitacao.status !== 'aceita' && solicitacao.status !== 'aguardando_pagamento') {
+                return res.status(400).json({ status: 400, ok: false, message: `Não é possível iniciar pagamento para solicitação com status '${solicitacao.status}'.` });
             }
 
-            // 4. Obter o valor do serviço (valor_proposto ou valor_estimado do serviço oferecido)
-            const valorDoServico = solicitacao.valor_proposto || solicitacao.servico_valor_estimado;
-            if (!valorDoServico || parseFloat(valorDoServico) <= 0) {
-                return res.status(400).json({ status: 400, ok: false, message: "Valor do serviço inválido para pagamento." });
+            // 4. Obter detalhes do prestador para o pagamento (se necessário para o gateway)
+            const prestadorResult = await prestadoresRepository.getById(solicitacao.prestador_id_aceito);
+            if (!prestadorResult.ok || !prestadorResult.data) {
+                return res.status(404).json({ status: 404, ok: false, message: "Prestador associado à solicitação não encontrado." });
             }
+            const prestador = prestadorResult.data;
 
-            // 5. Criar ou obter a conta de custódia para esta solicitação
-            let contaCustodiaResult = await pagamentosRepository.getContaCustodiaBySolicitacaoId(solicitacao_id);
-            let contaCustodia;
-
-            if (!contaCustodiaResult.ok || !contaCustodiaResult.data) {
-                // Se não existe, cria uma nova conta de custódia
-                const newContaCustodia = {
-                    solicitacao_id: solicitacao_id,
-                    valor_total: valorDoServico,
-                    valor_em_custodia: 0,
-                    status: 'pendente'
-                };
-                const createContaResult = await pagamentosRepository.createContaCustodia(newContaCustodia);
-                if (!createContaResult.ok) {
-                    return res.status(createContaResult.status).json(createContaResult);
-                }
-                contaCustodia = createContaResult.data;
-            } else {
-                contaCustodia = contaCustodiaResult.data;
-                // Se já existe e já foi depositado, não permite novo pagamento
-                if (contaCustodia.status === 'depositado') {
-                    return res.status(400).json({ status: 400, ok: false, message: "Pagamento para esta solicitação já foi depositado." });
-                }
-                // Se o valor total da solicitação mudou, atualiza na conta de custódia
-                if (parseFloat(contaCustodia.valor_total) !== parseFloat(valorDoServico)) {
-                    await pagamentosRepository.updateContaCustodia(contaCustodia.id, { valor_total: valorDoServico });
-                    contaCustodia.valor_total = valorDoServico; // Atualiza o objeto local
-                }
-            }
-
-            // 6. Preparar dados para o Stark Bank (simulado)
+            // 5. Preparar dados para o gateway de pagamento (Stark Bank)
             const paymentData = {
-                amount: parseFloat(valorDoServico),
-                description: `Pagamento serviço ${solicitacao.titulo_servico} (Solicitação #${solicitacao_id})`,
-                taxId: solicitacao.cliente_cpf_cnpj, // CPF/CNPJ do cliente pagador
-                name: solicitacao.nome_cliente, // Nome do cliente pagador
-                // Outros dados específicos para Pix, Boleto, Cartão (chave Pix, dados do cartão, etc.)
-                // Estes dados viriam do frontend de forma segura.
-                metodo: metodo_pagamento
+                amount: valor_pagamento,
+                description: `Pagamento para solicitação de serviço #${solicitacao_id}`,
+                taxId: prestador.documento_identificacao, // Exemplo: CPF/CNPJ do prestador
+                name: prestador.nome_completo, // Exemplo: Nome do prestador
+                method: metodo_pagamento,
+                // Adicione outros dados necessários para o Stark Bank, como dados do pagador, etc.
+                // clientInfo: { id: cliente_id, name: req.user.nome, email: req.user.email },
+                // metadata: { solicitacaoId: solicitacao_id }
             };
 
-            // 7. Chamar o serviço do Stark Bank para iniciar o pagamento
-            const starkBankResponse = await starkBankService.createPayment(paymentData);
-
-            if (!starkBankResponse.ok) {
-                return res.status(500).json({ status: 500, ok: false, message: starkBankResponse.message, starkBankError: starkBankResponse.data });
+            let gatewayResponse;
+            try {
+                // Chamar o serviço Stark Bank para iniciar o pagamento
+                gatewayResponse = await starkBankService.createPayment(paymentData);
+            } catch (gatewayError) {
+                console.error("Erro ao chamar o serviço Stark Bank:", gatewayError);
+                return res.status(500).json({ status: 500, ok: false, message: "Erro ao processar pagamento com o gateway." });
             }
 
-            // 8. Registrar a transação no seu banco de dados
-            const transacaoObj = {
+            if (!gatewayResponse || !gatewayResponse.ok) {
+                // Erro retornado pelo serviço Stark Bank (não um erro de rede)
+                return res.status(gatewayResponse.status || 500).json({
+                    status: gatewayResponse.status || 500,
+                    ok: false,
+                    message: gatewayResponse.message || "Falha ao iniciar pagamento via gateway."
+                });
+            }
+
+            // 6. Criar o registro de pagamento no seu banco de dados
+            const newPayment = {
                 solicitacao_id: solicitacao_id,
-                conta_custodia_id: contaCustodia.id,
-                remetente_id: cliente_id,
-                remetente_tipo: 'cliente',
-                destinatario_id: solicitacao.prestador_id_aceito,
-                destinatario_tipo: 'prestador',
-                tipo_transacao: 'pagamento_servico',
-                valor: parseFloat(valorDoServico),
-                moeda: 'BRL',
+                cliente_id: cliente_id,
+                prestador_id: solicitacao.prestador_id_aceito,
+                valor: valor_pagamento,
                 metodo_pagamento: metodo_pagamento,
-                status: 'pendente', // Status inicial, será atualizado pelo webhook
-                id_externo_gateway: starkBankResponse.data.id // ID retornado pelo Stark Bank
+                status: 'pendente', // Status inicial, aguardando confirmação do gateway
+                id_externo_gateway: gatewayResponse.data.id, // ID da transação no Stark Bank
+                url_pagamento: gatewayResponse.data.payment_url || null, // URL para PIX/Boleto, se aplicável
+                // Adicione quaisquer outros dados relevantes do gateway, como código PIX, linha digitável, etc.
+                // pix_code: gatewayResponse.data.pix_code,
+                // barcode: gatewayResponse.data.barcode,
             };
 
-            const createTransacaoResult = await pagamentosRepository.createTransacao(transacaoObj);
-            if (!createTransacaoResult.ok) {
-                // Se a transação no seu DB falhar, você pode precisar reverter o pagamento no Stark Bank (se for possível)
-                return res.status(createTransacaoResult.status).json(createTransacaoResult);
-            }
+            const result = await pagamentosRepository.createPayment(newPayment);
 
-            res.status(200).json({
-                status: 200,
-                ok: true,
-                message: "Pagamento iniciado com sucesso. Aguardando confirmação do gateway.",
-                data: {
-                    transacao: createTransacaoResult.data,
-                    starkBankInfo: starkBankResponse.data // Retorna informações do Stark Bank (ex: QR Code Pix, linha digitável)
-                }
-            });
+            if (result.ok) {
+                // Opcional: Atualizar o status da solicitação para 'aguardando_pagamento' ou similar
+                await solicitacoesRepository.updateStatus(solicitacao_id, 'aguardando_pagamento');
+
+                res.status(result.status).json({
+                    ...result,
+                    gateway_data: gatewayResponse.data // Retorna dados do gateway para o frontend (ex: QR Code, URL)
+                });
+            } else {
+                // Se falhar ao salvar no DB, idealmente você deveria tentar reverter a transação no gateway
+                // Ou ter um sistema de reconciliação. Por simplicidade, apenas logamos o erro aqui.
+                console.error("Erro ao salvar pagamento no DB após sucesso no gateway:", result.message);
+                res.status(result.status).json(result);
+            }
 
         } catch (error) {
             console.error("Erro no controller ao iniciar pagamento:", error);
@@ -141,350 +128,212 @@ const pagamentosController = {
     },
 
     /**
-     * @description Libera o pagamento de custódia para o prestador após a conclusão do serviço.
-     * Apenas o cliente que solicitou o serviço pode liberar.
-     * @param {Object} req - Objeto de requisição (params: { solicitacao_id }).
+     * @description Confirma um pagamento (geralmente via webhook do gateway de pagamento).
+     * Esta rota seria chamada pelo Stark Bank quando um pagamento é confirmado.
+     * @param {Object} req - Objeto de requisição (body: dados do webhook do Stark Bank).
      * @param {Object} res - Objeto de resposta.
      */
-    releasePayment: async (req, res) => {
-        const cliente_id = req.user.id; // ID do cliente logado
-        const solicitacao_id = parseInt(req.params.solicitacao_id);
-
-        if (isNaN(solicitacao_id)) {
-            return res.status(400).json({ status: 400, ok: false, message: "ID da solicitação inválido." });
-        }
-
-        try {
-            // 1. Obter detalhes da solicitação
-            const solicitacaoResult = await solicitacoesRepository.getById(solicitacao_id);
-            if (!solicitacaoResult.ok || !solicitacaoResult.data) {
-                return res.status(404).json({ status: 404, ok: false, message: "Solicitação de serviço não encontrada." });
-            }
-            const solicitacao = solicitacaoResult.data;
-
-            // 2. Validar se o cliente logado é o cliente da solicitação
-            if (solicitacao.cliente_id !== cliente_id) {
-                return res.status(403).json({ status: 403, ok: false, message: "Acesso negado: Você não é o cliente desta solicitação." });
-            }
-
-            // 3. Validar status da solicitação (deve estar 'concluida')
-            if (solicitacao.status !== 'concluida') {
-                return res.status(400).json({ status: 400, ok: false, message: "Não é possível liberar pagamento: o serviço não está 'concluida'." });
-            }
-
-            // 4. Obter a conta de custódia
-            const contaCustodiaResult = await pagamentosRepository.getContaCustodiaBySolicitacaoId(solicitacao_id);
-            if (!contaCustodiaResult.ok || !contaCustodiaResult.data) {
-                return res.status(404).json({ status: 404, ok: false, message: "Conta de custódia não encontrada para esta solicitação." });
-            }
-            const contaCustodia = contaCustodiaResult.data;
-
-            // 5. Validar status da conta de custódia (deve estar 'depositado')
-            if (contaCustodia.status !== 'depositado') {
-                return res.status(400).json({ status: 400, ok: false, message: "Não é possível liberar pagamento: o valor não está em custódia ou já foi liberado/cancelado." });
-            }
-            if (parseFloat(contaCustodia.valor_em_custodia) !== parseFloat(contaCustodia.valor_total)) {
-                 return res.status(400).json({ status: 400, ok: false, message: "Valor em custódia não corresponde ao valor total do serviço." });
-            }
-
-            // 6. Calcular a taxa da plataforma
-            const prestadorResult = await prestadoresRepository.getById(solicitacao.prestador_id_aceito);
-            if (!prestadorResult.ok || !prestadorResult.data) {
-                return res.status(404).json({ status: 404, ok: false, message: "Prestador aceito não encontrado." });
-            }
-            const prestador = prestadorResult.data;
-
-            const assinaturaPrestadorResult = await pagamentosRepository.getAssinaturaByPrestadorId(prestador.id);
-            let taxaComissao = 0.15; // Taxa padrão se não houver assinatura ou plano
-            if (assinaturaPrestadorResult.ok && assinaturaPrestadorResult.data) {
-                taxaComissao = parseFloat(assinaturaPrestadorResult.data.plano_taxa_comissao);
-            }
-
-            const valorTotal = parseFloat(contaCustodia.valor_total);
-            const valorTaxa = valorTotal * taxaComissao;
-            const valorRepassePrestador = valorTotal - valorTaxa;
-
-            // 7. Simular a criação da transferência para o prestador e a taxa para a plataforma
-            // (Esta parte seria a integração real com o Stark Bank para transferências)
-            console.log(`[StarkBankService - MOCK] Simulação de transferência para Prestador ${prestador.nome}: R$ ${valorRepassePrestador.toFixed(2)}`);
-            console.log(`[StarkBankService - MOCK] Simulação de taxa para Plataforma: R$ ${valorTaxa.toFixed(2)}`);
-
-            // Simular sucesso da transferência
-            const mockTransferId = `mock-transfer-${Date.now()}`;
-            const mockFeeId = `mock-fee-${Date.now()}-platform`;
-
-            // 8. Registrar as transações de repasse e taxa no seu banco de dados
-            // Transação de repasse para o prestador
-            const repasseTransacao = {
-                solicitacao_id: solicitacao_id,
-                conta_custodia_id: contaCustodia.id,
-                remetente_id: null, // A plataforma é a remetente (do escrow)
-                remetente_tipo: 'plataforma',
-                destinatario_id: prestador.id,
-                destinatario_tipo: 'prestador',
-                tipo_transacao: 'repasse_prestador',
-                valor: valorRepassePrestador,
-                moeda: 'BRL',
-                metodo_pagamento: 'transferencia_interna', // Ou tipo de transferência do Stark Bank
-                status: 'concluida',
-                id_externo_gateway: mockTransferId
-            };
-            const repasseResult = await pagamentosRepository.createTransacao(repasseTransacao);
-            if (!repasseResult.ok) {
-                console.error("Erro ao registrar transação de repasse:", repasseResult.message);
-                // Considerar rollback ou compensação
-            }
-
-            // Transação da taxa para a plataforma
-            const taxaTransacao = {
-                solicitacao_id: solicitacao_id,
-                conta_custodia_id: contaCustodia.id,
-                remetente_id: null, // A plataforma é a remetente (do escrow)
-                remetente_tipo: 'plataforma',
-                destinatario_id: null, // A plataforma é a destinatária
-                destinatario_tipo: 'plataforma',
-                tipo_transacao: 'taxa_plataforma',
-                valor: valorTaxa,
-                moeda: 'BRL',
-                metodo_pagamento: 'deducao_interna',
-                status: 'concluida',
-                id_externo_gateway: mockFeeId
-            };
-            const taxaResult = await pagamentosRepository.createTransacao(taxaTransacao);
-            if (!taxaResult.ok) {
-                console.error("Erro ao registrar transação de taxa:", taxaResult.message);
-                // Considerar rollback ou compensação
-            }
-
-            // 9. Atualizar o status da conta de custódia para 'liberado'
-            const updateCustodiaResult = await pagamentosRepository.updateContaCustodia(contaCustodia.id, { status: 'liberado', valor_em_custodia: 0 });
-            if (!updateCustodiaResult.ok) {
-                console.error("Erro ao atualizar status da conta de custódia:", updateCustodiaResult.message);
-                // Isso é crítico, pode indicar inconsistência.
-            }
-
-            res.status(200).json({
-                status: 200,
-                ok: true,
-                message: "Pagamento liberado para o prestador e taxas processadas com sucesso.",
-                data: {
-                    solicitacao_id: solicitacao_id,
-                    valor_repassado: valorRepassePrestador.toFixed(2),
-                    valor_taxa: valorTaxa.toFixed(2),
-                    conta_custodia_status: updateCustodiaResult.data ? updateCustodiaResult.data.status : 'erro_atualizacao'
-                }
-            });
-
-        } catch (error) {
-            console.error("Erro no controller ao liberar pagamento:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao liberar pagamento." });
-        }
-    },
-
-    /**
-     * @description Endpoint para receber notificações de webhook do Stark Bank.
-     * Este endpoint seria chamado pelo Stark Bank para informar sobre o status de uma transação.
-     * @param {Object} req - Objeto de requisição (body: payload do webhook).
-     * @param {Object} res - Objeto de resposta.
-     */
-    handleWebhook: async (req, res) => {
-        console.log("[Webhook] Recebido webhook do Stark Bank:", req.body);
-
+    confirmPayment: async (req, res) => {
+        // A lógica aqui dependerá da estrutura do webhook do Stark Bank.
+        // Geralmente, você receberá um ID de transação e um status.
         const webhookData = req.body;
-        const externalId = webhookData.id;
-        let newStatus = webhookData.status; // Usar let para poder reatribuir
-        const type = webhookData.type;
+        console.log("Webhook de confirmação de pagamento recebido:", webhookData);
 
-        console.log(`[Webhook DEBUG] Processando webhook para externalId: ${externalId}, status: ${newStatus}, tipo: ${type}`);
+        // Exemplo hipotético:
+        const externalPaymentId = webhookData.event.entity.id; // ID da transação no Stark Bank
+        const statusFromGateway = webhookData.event.entity.status; // Status do pagamento ('paid', 'failed', etc.)
+
+        if (!externalPaymentId || !statusFromGateway) {
+            return res.status(400).json({ status: 400, ok: false, message: "Dados do webhook incompletos." });
+        }
 
         try {
-            // Mapear status do Stark Bank para status interno do seu DB
-            if (newStatus === 'paid') {
-                newStatus = 'concluida'; // Mapeia 'paid' para 'concluida'
-            } else if (newStatus === 'failed') {
-                newStatus = 'falhou'; // Exemplo de mapeamento para falha
-            } else if (newStatus === 'processing') {
-                newStatus = 'processando'; // Mapeia 'processing' para 'processando'
+            // 1. Buscar o pagamento no seu DB pelo id_externo_gateway
+            const paymentResult = await pagamentosRepository.getByExternalId(externalPaymentId);
+
+            if (!paymentResult.ok || !paymentResult.data) {
+                return res.status(404).json({ status: 404, ok: false, message: "Pagamento não encontrado no sistema." });
             }
-            // Adicione mais mapeamentos conforme a documentação do Stark Bank
+            const payment = paymentResult.data;
 
-            console.log(`[Webhook DEBUG] Status mapeado para DB interno: ${newStatus}`);
-
-
-            // Buscar a transação correspondente no seu banco de dados pelo id_externo_gateway
-            const transacaoResult = await pagamentosRepository.getTransacaoByExternalId(externalId);
-            if (!transacaoResult.ok || !transacaoResult.data) {
-                console.warn(`[Webhook DEBUG] Transação com ID externo ${externalId} não encontrada no DB interno.`);
-                return res.status(404).json({ status: 404, ok: false, message: "Transação não encontrada no sistema." });
-            }
-            const transacao = transacaoResult.data;
-            console.log(`[Webhook DEBUG] Transação interna encontrada: ID=${transacao.id}, Status Atual=${transacao.status}`);
-
-            // Atualizar o status da transação
-            const updateTransacaoResult = await pagamentosRepository.updateTransacaoStatus(transacao.id, newStatus);
-            console.log(`[Webhook DEBUG] Resultado da atualização da transação:`, updateTransacaoResult);
-
-            if (!updateTransacaoResult.ok) {
-                console.error(`[Webhook DEBUG] Erro ao atualizar status da transação ${transacao.id}:`, updateTransacaoResult.message);
-                return res.status(500).json({ status: 500, ok: false, message: "Erro ao atualizar status da transação interna." });
+            let newStatus;
+            if (statusFromGateway === 'paid') { // Ou 'completed', 'success', dependendo do Stark Bank
+                newStatus = 'confirmado';
+            } else if (statusFromGateway === 'failed' || statusFromGateway === 'canceled') {
+                newStatus = 'falhou';
+            } else {
+                newStatus = 'desconhecido'; // Ou outro status intermediário
             }
 
-            // Lógica adicional baseada no tipo e status da transação
-            if (type === 'pix-payment' && newStatus === 'concluida') { // Usar 'concluida' aqui
-                console.log(`[Webhook DEBUG] Pagamento Pix confirmado para solicitação ${transacao.solicitacao_id}.`);
-                // Se o pagamento do cliente foi confirmado, atualiza a conta de custódia
-                const contaCustodiaResult = await pagamentosRepository.getContaCustodiaBySolicitacaoId(transacao.solicitacao_id);
-                if (contaCustodiaResult.ok && contaCustodiaResult.data) {
-                    const contaCustodia = contaCustodiaResult.data;
-                    console.log(`[Webhook DEBUG] Conta de custódia encontrada: ID=${contaCustodia.id}, Status Atual=${contaCustodia.status}`);
+            // 2. Atualizar o status do pagamento no seu DB
+            const updateResult = await pagamentosRepository.updatePaymentStatus(payment.id, newStatus);
 
-                    // Verifica se o valor da transação corresponde ao valor total da solicitação
-                    const valorTransacao = parseFloat(transacao.valor);
-                    const valorTotalCustodia = parseFloat(contaCustodia.valor_total);
-
-                    if (valorTransacao !== valorTotalCustodia) {
-                        console.warn(`[Webhook DEBUG] Discrepância de valor: Transação ${valorTransacao} vs Custódia ${valorTotalCustodia}.`);
-                        // Você pode decidir como lidar com isso: erro, log, ou ajustar a custódia.
-                        // Por enquanto, vamos prosseguir com o valor da transação.
-                    }
-
-                    const updateCustodia = await pagamentosRepository.updateContaCustodia(contaCustodia.id, {
-                        valor_em_custodia: valorTransacao, // Valor total agora em custódia
-                        status: 'depositado'
-                    });
-                    console.log(`[Webhook DEBUG] Resultado da atualização da custódia:`, updateCustodia);
-
-                    if (updateCustodia.ok) {
-                        // Opcional: Atualizar status da solicitação para 'aguardando_liberacao'
-                        const updateSolicitacaoStatus = await solicitacoesRepository.update(transacao.solicitacao_id, { status: 'aguardando_liberacao' });
-                        console.log(`[Webhook DEBUG] Resultado da atualização do status da solicitação:`, updateSolicitacaoStatus);
-                    } else {
-                        console.error(`[Webhook DEBUG] Erro ao atualizar conta de custódia para solicitação ${transacao.solicitacao_id}:`, updateCustodia.message);
-                    }
-                } else {
-                    console.warn(`[Webhook DEBUG] Conta de custódia não encontrada para solicitação ${transacao.solicitacao_id}.`);
+            if (updateResult.ok) {
+                // Opcional: Se o pagamento foi confirmado, atualizar o status da solicitação
+                if (newStatus === 'confirmado') {
+                    await solicitacoesRepository.updateStatus(payment.solicitacao_id, 'paga');
+                    // Aqui você também pode notificar o prestador que o pagamento foi confirmado
+                } else if (newStatus === 'falhou') {
+                    // Opcional: Reverter status da solicitação ou notificar o cliente
+                    await solicitacoesRepository.updateStatus(payment.solicitacao_id, 'pagamento_falhou');
                 }
+                res.status(200).json({ status: 200, ok: true, message: "Pagamento atualizado com sucesso." });
+            } else {
+                console.error("Erro ao atualizar status do pagamento no DB:", updateResult.message);
+                res.status(500).json({ status: 500, ok: false, message: "Erro interno ao atualizar status do pagamento." });
             }
-            // Você adicionaria lógica para 'transfer' (repasse), 'boleto', etc.
-
-            res.status(200).json({ status: 200, ok: true, message: "Webhook processado com sucesso." });
 
         } catch (error) {
-            console.error("[Webhook] Erro ao processar webhook:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao processar webhook." });
+            console.error("Erro no controller ao confirmar pagamento via webhook:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao processar webhook de pagamento." });
         }
     },
 
     /**
-     * @description Obtém o status de uma transação específica.
-     * @param {Object} req - Objeto de requisição (params: { id }).
+     * @description Inicia a cobrança de uma assinatura de prestador em um plano.
+     * @param {Object} req - Objeto de requisição (body: { plano_id, valor_assinatura, metodo_pagamento }).
      * @param {Object} res - Objeto de resposta.
      */
-    getTransacaoStatus: async (req, res) => {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            return res.status(400).json({ status: 400, ok: false, message: "ID da transação inválido." });
-        }
-
-        try {
-            const transacaoResult = await pagamentosRepository.getTransacaoById(id);
-            if (!transacaoResult.ok || !transacaoResult.data) {
-                return res.status(transacaoResult.status).json(transacaoResult);
-            }
-            const transacao = transacaoResult.data;
-
-            // Opcional: Chamar Stark Bank para obter o status mais recente, se necessário
-            // const starkBankStatus = await starkBankService.getPaymentStatus(transacao.id_externo_gateway);
-            // if (starkBankStatus.ok) {
-            //     transacao.starkBankStatus = starkBankStatus.data.status;
-            // }
-
-            res.status(200).json({
-                status: 200,
-                ok: true,
-                message: "Status da transação obtido com sucesso.",
-                data: transacao
-            });
-        } catch (error) {
-            console.error("Erro no controller ao obter status da transação:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao obter status da transação." });
-        }
-    },
-
-    /**
-     * @description Obtém os planos de assinatura disponíveis.
-     * @param {Object} req - Objeto de requisição.
-     * @param {Object} res - Objeto de resposta.
-     */
-    getPlanosAssinatura: async (req, res) => {
-        try {
-            const result = await pagamentosRepository.getAllPlanosAssinatura(); // Método a ser criado no repo
-            res.status(result.status).json(result);
-        } catch (error) {
-            console.error("Erro no controller ao obter planos de assinatura:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao obter planos de assinatura." });
-        }
-    },
-
-    /**
-     * @description Assina um prestador em um plano.
-     * @param {Object} req - Objeto de requisição (body: { plano_id }).
-     * @param {Object} res - Objeto de resposta.
-     */
-    subscribePrestadorToPlan: async (req, res) => {
+    initiateAssinaturaPrestador: async (req, res) => {
         const prestador_id = req.user.id; // ID do prestador logado
-        const { plano_id } = req.body;
+        const { plano_id, valor_assinatura, metodo_pagamento } = req.body;
 
+        const erros = [];
         if (!plano_id || isNaN(parseInt(plano_id))) {
-            return res.status(400).json({ status: 400, ok: false, message: "ID do plano é obrigatório e deve ser um número." });
+            erros.push("ID do plano é obrigatório e deve ser um número.");
+        }
+        if (typeof valor_assinatura !== 'number' || valor_assinatura <= 0) {
+            erros.push("Valor da assinatura é obrigatório e deve ser um número positivo.");
+        }
+        if (!metodo_pagamento || metodo_pagamento.trim().length === 0) {
+            erros.push("Método de pagamento é obrigatório.");
+        }
+        if (!['pix', 'boleto', 'cartao_credito', 'transferencia'].includes(metodo_pagamento)) {
+            erros.push("Método de pagamento inválido. Opções válidas: 'pix', 'boleto', 'cartao_credito', 'transferencia'.");
+        }
+
+        if (erros.length > 0) {
+            return res.status(400).json({ status: 400, ok: false, message: erros });
         }
 
         try {
-            // 1. Verificar se o plano existe
-            const planoResult = await pagamentosRepository.getPlanoAssinaturaById(plano_id);
-            if (!planoResult.ok || !planoResult.data) {
-                return res.status(404).json({ status: 404, ok: false, message: "Plano de assinatura não encontrado." });
-            }
-            const plano = planoResult.data;
-
-            // 2. Verificar se o prestador já tem uma assinatura
+            // 1. Verificar se o prestador já possui uma assinatura ativa ou pendente para este plano
             const existingAssinatura = await pagamentosRepository.getAssinaturaByPrestadorId(prestador_id);
-            if (existingAssinatura.ok && existingAssinatura.data) {
-                return res.status(409).json({ status: 409, ok: false, message: "Este prestador já possui uma assinatura ativa." });
+            if (existingAssinatura.ok && existingAssinatura.data &&
+                (existingAssinatura.data.status === 'ativa' || existingAssinatura.data.status === 'pendente')) {
+                return res.status(409).json({ status: 409, ok: false, message: "Prestador já possui uma assinatura ativa ou pendente." });
             }
 
-            // 3. Criar a assinatura
+            // 2. Preparar dados para o gateway de cobrança (Stark Bank - para assinatura)
+            const chargeData = {
+                amount: valor_assinatura,
+                description: `Assinatura do Plano ${plano_id} para Prestador ${prestador_id}`,
+                taxId: req.user.documento_identificacao, // Assumindo que o documento está no req.user ou buscar do DB
+                name: req.user.nome, // Nome do prestador
+                method: metodo_pagamento,
+                // Adicione outros dados necessários para o Stark Bank para cobranças recorrentes
+            };
+
+            let starkBankChargeResponse;
+            try {
+                // Chamar o serviço Stark Bank para iniciar a cobrança da assinatura
+                starkBankChargeResponse = await starkBankService.createSubscriptionCharge(chargeData);
+            } catch (gatewayError) {
+                console.error("Erro ao chamar o serviço Stark Bank para assinatura:", gatewayError);
+                return res.status(500).json({ status: 500, ok: false, message: "Erro ao processar assinatura com o gateway." });
+            }
+
+            if (!starkBankChargeResponse || !starkBankChargeResponse.ok) {
+                return res.status(starkBankChargeResponse.status || 500).json({
+                    status: starkBankChargeResponse.status || 500,
+                    ok: false,
+                    message: starkBankChargeResponse.message || "Falha ao iniciar cobrança da assinatura via gateway."
+                });
+            }
+
+            // 3. Criar o registro da assinatura no seu banco de dados
             const newAssinatura = {
                 prestador_id: prestador_id,
-                plano_id: parseInt(plano_id),
+                plano_id: plano_id,
                 data_inicio: new Date(),
-                status: 'ativo'
+                data_fim_prevista: null, // Definir com base na duração do plano
+                valor: valor_assinatura,
+                metodo_pagamento: metodo_pagamento,
+                status: 'pendente', // Marca como pendente até o pagamento ser confirmado
+                id_externo_gateway: starkBankChargeResponse.data.id, // Salva o ID da cobrança
+                url_pagamento: starkBankChargeResponse.data.payment_url || null, // URL para PIX/Boleto, se aplicável
             };
 
-            // Para planos pagos, você iniciaria um processo de pagamento aqui
-            if (plano.periodicidade !== 'gratuito') {
-                // Lógica para cobrar o prestador pelo plano (ex: via Stark Bank)
-                // Isso envolveria criar uma transação de 'cobranca_assinatura'
-                // E talvez atualizar o status da assinatura para 'pendente' até a confirmação do pagamento
-                console.log(`[PagamentosController] Iniciando cobrança para plano ${plano.nome} (R$ ${plano.valor}) para prestador ${prestador_id}`);
-                // const starkBankChargeResponse = await starkBankService.createCharge({
-                //     amount: plano.valor,
-                //     description: `Assinatura Plano ${plano.nome}`,
-                //     // ... dados do prestador para cobrança
-                // });
-                // if (!starkBankChargeResponse.ok) {
-                //     return res.status(500).json({ status: 500, ok: false, message: "Falha ao iniciar cobrança da assinatura." });
-                // }
-                // newAssinatura.status = 'pendente'; // Marca como pendente até o pagamento ser confirmado
-                // newAssinatura.id_externo_gateway = starkBankChargeResponse.data.id; // Salva o ID da cobrança
-            }
-
             const result = await pagamentosRepository.createAssinaturaPrestador(newAssinatura);
-            res.status(result.status).json(result);
+
+            if (result.ok) {
+                res.status(result.status).json({
+                    ...result,
+                    gateway_data: starkBankChargeResponse.data // Retorna dados do gateway para o frontend
+                });
+            } else {
+                console.error("Erro ao salvar assinatura no DB após sucesso no gateway:", result.message);
+                res.status(result.status).json(result);
+            }
 
         } catch (error) {
             console.error("Erro no controller ao assinar prestador em plano:", error);
             res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao assinar prestador em plano." });
+        }
+    },
+
+    /**
+     * @description Confirma uma assinatura de prestador (geralmente via webhook do gateway).
+     * @param {Object} req - Objeto de requisição (body: dados do webhook do Stark Bank).
+     * @param {Object} res - Objeto de resposta.
+     */
+    confirmAssinatura: async (req, res) => {
+        const webhookData = req.body;
+        console.log("Webhook de confirmação de assinatura recebido:", webhookData);
+
+        const externalChargeId = webhookData.event.entity.id;
+        const statusFromGateway = webhookData.event.entity.status;
+
+        if (!externalChargeId || !statusFromGateway) {
+            return res.status(400).json({ status: 400, ok: false, message: "Dados do webhook de assinatura incompletos." });
+        }
+
+        try {
+            const assinaturaResult = await pagamentosRepository.getAssinaturaByExternalId(externalChargeId);
+
+            if (!assinaturaResult.ok || !assinaturaResult.data) {
+                return res.status(404).json({ status: 404, ok: false, message: "Assinatura não encontrada no sistema." });
+            }
+            const assinatura = assinaturaResult.data;
+
+            let newStatus;
+            if (statusFromGateway === 'paid') {
+                newStatus = 'ativa'; // Assinatura confirmada e ativa
+            } else if (statusFromGateway === 'failed' || statusFromGateway === 'canceled') {
+                newStatus = 'cancelada'; // Ou 'falhou'
+            } else {
+                newStatus = 'pendente'; // Manter pendente ou outro status intermediário
+            }
+
+            const updateResult = await pagamentosRepository.updateAssinaturaStatus(assinatura.id, newStatus);
+
+            if (updateResult.ok) {
+                // Se a assinatura foi ativada, você pode querer registrar a data de fim prevista
+                if (newStatus === 'ativa' && !assinatura.data_fim_prevista) {
+                    // Exemplo: Se o plano for mensal, adicionar 1 mês à data_inicio
+                    const dataFimPrevista = new Date(assinatura.data_inicio);
+                    dataFimPrevista.setMonth(dataFimPrevista.getMonth() + 1); // Exemplo para plano mensal
+                    await pagamentosRepository.updateAssinaturaDataFim(assinatura.id, dataFimPrevista);
+                }
+                res.status(200).json({ status: 200, ok: true, message: "Assinatura atualizada com sucesso." });
+            } else {
+                console.error("Erro ao atualizar status da assinatura no DB:", updateResult.message);
+                res.status(500).json({ status: 500, ok: false, message: "Erro interno ao atualizar status da assinatura." });
+            }
+
+        } catch (error) {
+            console.error("Erro no controller ao confirmar assinatura via webhook:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao processar webhook de assinatura." });
         }
     },
 
@@ -501,6 +350,32 @@ const pagamentosController = {
         } catch (error) {
             console.error("Erro no controller ao obter assinatura do prestador:", error);
             res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao obter assinatura do prestador." });
+        }
+    },
+
+    /**
+     * @description Obtém um pagamento específico pelo ID.
+     * @param {Object} req - Objeto de requisição (params: { id }).
+     * @param {Object} res - Objeto de resposta.
+     */
+    getPaymentById: async (req, res) => {
+        const payment_id = parseInt(req.params.id);
+        if (isNaN(payment_id)) {
+            return res.status(400).json({ status: 400, ok: false, message: "ID do pagamento inválido." });
+        }
+        try {
+            const result = await pagamentosRepository.getPaymentById(payment_id);
+            if (!result.ok || !result.data) {
+                return res.status(404).json({ status: 404, ok: false, message: "Pagamento não encontrado." });
+            }
+            // Opcional: Validar se o usuário logado tem permissão para ver este pagamento
+            // if (result.data.cliente_id !== req.user.id && result.data.prestador_id !== req.user.id) {
+            //     return res.status(403).json({ status: 403, ok: false, message: "Acesso negado." });
+            // }
+            res.status(result.status).json(result);
+        } catch (error) {
+            console.error("Erro no controller ao obter pagamento por ID:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao obter pagamento por ID." });
         }
     }
 };

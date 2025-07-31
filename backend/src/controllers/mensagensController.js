@@ -1,10 +1,8 @@
 import mensagensRepository from "../repositories/mensagensRepository.js";
 import solicitacoesRepository from "../repositories/solicitacoesRepository.js";
-import { Server } from 'socket.io'; // Importar Server do socket.io
+// Não precisamos importar Server aqui, apenas a instância 'ioInstance'
 
-// A instância do io precisa ser passada para o controller.
-// Uma forma comum é exportar uma função que inicializa o controller com o io.
-let ioInstance;
+let ioInstance; // Variável para armazenar a instância do Socket.IO
 
 const mensagensController = {
     // Método para injetar a instância do Socket.IO
@@ -14,7 +12,7 @@ const mensagensController = {
 
     /**
      * @description Envia uma nova mensagem para uma solicitação de serviço.
-     * Esta rota será chamada via HTTP (REST) e também emitirá a mensagem via Socket.IO.
+     * Esta rota será chamada via HTTP (REST) e emitirá a mensagem via Socket.IO após salvar no DB.
      * @param {Object} req - Objeto de requisição (body: { solicitacao_id, conteudo, foto_url }).
      * @param {Object} res - Objeto de resposta.
      */
@@ -22,6 +20,7 @@ const mensagensController = {
         const { solicitacao_id, conteudo, foto_url } = req.body;
         const remetente_id = req.user.id; // ID do usuário logado (cliente ou prestador)
         const remetente_tipo = req.user.tipo; // Tipo do usuário logado ('cliente' ou 'prestador')
+        const remetente_nome = req.user.nome; // Nome do usuário logado (para exibir no chat)
 
         const erros = [];
         if (!solicitacao_id || isNaN(parseInt(solicitacao_id))) {
@@ -75,14 +74,15 @@ const mensagensController = {
 
             if (result.ok) {
                 // 3. Emitir a mensagem via Socket.IO para a sala da solicitação
+                // A mensagem emitida deve conter todos os dados necessários para o frontend,
+                // incluindo o ID gerado pelo banco de dados e o timestamp.
                 if (ioInstance) {
-                    const messageData = {
-                        ...result.data, // Dados da mensagem salva no DB
-                        remetente_nome: req.user.nome, // Adiciona o nome do remetente para exibição no frontend
-                        // Você pode adicionar mais dados do remetente/destinatário aqui se precisar
+                    const messageToEmit = {
+                        ...result.data, // Dados da mensagem salva no DB (já inclui id, data_envio, lida: false)
+                        remetente_nome: remetente_nome // Adiciona o nome do remetente para exibição no frontend
                     };
-                    ioInstance.to(solicitacao_id.toString()).emit('message', messageData);
-                    console.log(`[Socket.IO] Mensagem emitida para sala ${solicitacao_id}:`, messageData);
+                    ioInstance.to(solicitacao_id.toString()).emit('message', messageToEmit);
+                    console.log(`[Socket.IO] Mensagem emitida para sala ${solicitacao_id} após persistência:`, messageToEmit);
                 } else {
                     console.warn("[Socket.IO] Instância do Socket.IO não disponível no controller. Mensagem não emitida em tempo real.");
                 }

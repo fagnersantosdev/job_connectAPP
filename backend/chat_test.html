@@ -176,6 +176,8 @@
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             // Determina se a mensagem foi enviada por este cliente para aplicar estilo
+            // A comparação deve ser feita com o ID e tipo do remetente da mensagem recebida
+            // e o ID e tipo do usuário que está usando este cliente HTML.
             if (msg.remetente_id == remetenteIdInput.value && msg.remetente_tipo == remetenteTipoInput.value) {
                 messageElement.classList.add('sent');
             } else {
@@ -184,7 +186,7 @@
 
             const senderInfo = document.createElement('strong');
             // Tenta usar nome_remetente_cliente/prestador se disponível, senão usa ID e Tipo
-            const senderName = msg.nome_remetente_cliente || msg.nome_remetente_prestador || `${msg.remetente_tipo} ${msg.remetente_id}`;
+            const senderName = msg.remetente_nome || `${msg.remetente_tipo} ${msg.remetente_id}`;
             senderInfo.textContent = `${senderName}:`;
             messageElement.appendChild(senderInfo);
 
@@ -267,14 +269,10 @@
         async function sendMessage() {
             const conteudo = messageInput.value.trim();
             const solicitacao_id = solicitacaoIdInput.value;
-            const remetente_id = remetenteIdInput.value;
-            const remetente_tipo = remetenteTipoInput.value;
-            const destinatario_id = destinatarioIdInput.value;
-            const destinatario_tipo = destinatarioTipoInput.value;
             const jwtToken = jwtTokenInput.value;
 
-            if (!conteudo || !solicitacao_id || !remetente_id || !remetente_tipo || !destinatario_id || !destinatario_tipo || !jwtToken) {
-                alert('Por favor, preencha todos os campos (incluindo o Token JWT) antes de enviar a mensagem.');
+            if (!conteudo || !solicitacao_id || !jwtToken) {
+                alert('Por favor, preencha o conteúdo da mensagem, o ID da Solicitação e o Token JWT.');
                 return;
             }
 
@@ -285,7 +283,7 @@
             };
 
             try {
-                // 1. Enviar mensagem via HTTP POST para persistir no banco de dados
+                // Enviar mensagem via HTTP POST para persistir no banco de dados e emitir via Socket.IO
                 const response = await fetch('http://localhost:3000/mensagens', {
                     method: 'POST',
                     headers: {
@@ -298,13 +296,10 @@
                 const result = await response.json();
 
                 if (result.ok) {
-                    console.log('Mensagem persistida via HTTP POST:', result.data);
+                    console.log('Mensagem persistida e emitida via HTTP POST:', result.data);
                     messageInput.value = ''; // Limpa o input
-
-                    // 2. Opcional: Emitir a mensagem via Socket.IO (se o backend não re-emitir automaticamente)
-                    // No seu backend atual, o controller já emite via Socket.IO após salvar.
-                    // Se o backend não emitisse, você faria algo como:
-                    // socket.emit('chatMessage', result.data); // Emite a mensagem completa com ID e timestamp do DB
+                    // Não precisamos mais de socket.emit('chatMessage', ...) aqui,
+                    // pois o backend já fará a emissão após salvar no DB.
                 } else {
                     alert(`Erro ao enviar mensagem via HTTP: ${result.message || 'Erro desconhecido'}`);
                     console.error('Erro ao enviar mensagem via HTTP:', result);
@@ -323,7 +318,7 @@
                 return;
             }
             try {
-                const response = await fetch(`http://localhost:3000/mensagens/solicitacao/${solicitacaoId}`, {
+                const response = await fetch(`http://localhost:3000/mensagens/${solicitacaoId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -368,4 +363,3 @@
     </script>
 </body>
 </html>
-

@@ -1,33 +1,30 @@
 import express from 'express';
 import pagamentosController from '../controllers/pagamentosController.js';
-import authMiddleware from '../middlewares/authMiddleware.js'; // Importar o middleware de autenticação
+import authMiddleware from '../middlewares/authMiddleware.js'; // Certifique-se de que este caminho está correto
 
 const router = express.Router();
 
-// --- Rotas Protegidas para Pagamentos e Assinaturas ---
-// Todas as rotas de pagamento e assinatura devem ser protegidas, pois envolvem transações financeiras e dados sensíveis.
+// Rotas para pagamentos de serviços (cliente pagando prestador)
+// Rota para iniciar um novo pagamento para uma solicitação de serviço.
+router.post('/', authMiddleware, pagamentosController.initiatePayment);
 
-// POST /pagamentos/initiate - Inicia um novo pagamento para uma solicitação de serviço (Cliente)
-router.post('/initiate', authMiddleware, pagamentosController.initiatePayment);
+// Rota para confirmar um pagamento (geralmente via webhook do gateway de pagamento).
+// Esta rota não precisa de authMiddleware, pois é chamada pelo gateway (Stark Bank).
+router.post('/confirm', pagamentosController.confirmPayment);
 
-// POST /pagamentos/release/:solicitacao_id - Libera o pagamento de custódia para o prestador (Cliente)
-router.post('/release/:solicitacao_id', authMiddleware, pagamentosController.releasePayment);
+// Rotas para assinatura de prestador (prestador assinando plano)
+// Rota para iniciar a cobrança de uma assinatura de prestador em um plano.
+router.post('/assinatura', authMiddleware, pagamentosController.initiateAssinaturaPrestador);
 
-// GET /pagamentos/transacao/:id - Obtém o status de uma transação específica (Cliente/Prestador)
-router.get('/transacao/:id', authMiddleware, pagamentosController.getTransacaoStatus);
+// Rota para confirmar uma assinatura de prestador (geralmente via webhook do gateway).
+// Esta rota não precisa de authMiddleware, pois é chamada pelo gateway (Stark Bank).
+router.post('/assinatura/confirm', pagamentosController.confirmAssinatura);
 
-// POST /pagamentos/webhook - Endpoint para webhooks do Stark Bank (PÚBLICO, mas com validação interna de segurança)
-// Este endpoint deve ser acessível publicamente para o Stark Bank enviar notificações.
-router.post('/webhook', pagamentosController.handleWebhook); // Não precisa de authMiddleware aqui, a validação é interna do webhook.
+// Rotas para obter informações de pagamentos/assinaturas
+// Rota para obter a assinatura de um prestador logado.
+router.get('/assinatura/prestador', authMiddleware, pagamentosController.getPrestadorAssinatura);
 
-// GET /pagamentos/planos - Obtém todos os planos de assinatura disponíveis (PÚBLICO ou PROTEGIDO, dependendo da regra)
-router.get('/planos', pagamentosController.getPlanosAssinatura); // Deixando público para facilitar a consulta de planos.
-
-// POST /pagamentos/subscribe - Assina um prestador em um plano (Prestador)
-router.post('/subscribe', authMiddleware, pagamentosController.subscribePrestadorToPlan);
-
-// GET /pagamentos/assinatura/me - Obtém a assinatura do prestador logado (Prestador)
-router.get('/assinatura/me', authMiddleware, pagamentosController.getPrestadorAssinatura);
-
+// Rota para obter um pagamento específico pelo ID.
+router.get('/:id', authMiddleware, pagamentosController.getPaymentById);
 
 export default router;
