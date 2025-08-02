@@ -4,12 +4,19 @@ import {
   Image, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 
 export default function CadastroPrestador() {
   const [areaAtuacao, setAreaAtuacao] = useState('');
   const [cep, setCep] = useState('');
   const [descricao, setDescricao] = useState('');
   const [foto, setFoto] = useState(null);
+
+  const router = useRouter(); // ✅ agora router está disponível
+
+  const trocarDetela = () => {
+    router.push('/boas_vindas'); // ✅ Navega para tela de boas-vindas
+  };
 
   const escolherFoto = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -31,6 +38,8 @@ export default function CadastroPrestador() {
       descricao,
       foto
     });
+
+    trocarDetela(); // ✅ chama função ao cadastrar
   };
 
   return (
@@ -38,7 +47,6 @@ export default function CadastroPrestador() {
       contentContainerStyle={styles.container} 
       showsVerticalScrollIndicator={false}
     >
-
       {/* Logo */}
       <Image 
         source={require('../assets/images/logo-Jobconnect.png')} 
@@ -109,7 +117,6 @@ export default function CadastroPrestador() {
       <Text style={styles.footer}>
         “JobConnect” – Conectando serviços,{'\n'} facilitando sua vida!
       </Text>
-
     </ScrollView>
   );
 }
@@ -119,8 +126,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'transparent', // já definido no layout
-    paddingBottom: 50, // ✅ Garante espaço no final
+    backgroundColor: 'transparent',
+    paddingBottom: 50,
   },
   logo: {
     width: 200,
@@ -141,7 +148,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
-   
   },
   titulo: {
     fontSize: 22,
@@ -206,6 +212,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     marginTop: 20,
-    marginBottom: 50
+    marginBottom: 50,
   },
 });
