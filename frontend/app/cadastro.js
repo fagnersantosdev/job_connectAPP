@@ -7,7 +7,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-
 export default function CadastroScreen() {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -31,6 +30,11 @@ export default function CadastroScreen() {
     };
   }, []);
 
+  // Função para trocar de tela
+  const trocarDetela = () => {
+    router.push('/cadastro_parte2');
+  };
+
   const handleCadastro = () => {
     if (senha !== confirmarSenha) {
       Alert.alert('Erro', 'As senhas não coincidem');
@@ -39,6 +43,9 @@ export default function CadastroScreen() {
 
     console.log({ nome, cpf, email, telefone });
     Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+
+    // Chama a função para trocar de tela
+    trocarDetela();
   };
 
   return (
