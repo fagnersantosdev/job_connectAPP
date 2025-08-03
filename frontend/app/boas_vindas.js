@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router'; // 🔹 Importa o router
 
 // 🔹 Constantes para cores e tamanhos
 const COLORS = {
@@ -22,8 +23,10 @@ const SIZES = {
 };
 
 export default function TelaInicial() {
+  const router = useRouter(); // 🔹 Inicializa o router
+
   const handleComecar = () => {
-    console.log('Botão "Começar" pressionado');
+    router.push('/selection'); // 🔹 Navega para selection.js
   };
 
   return (

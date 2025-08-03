@@ -14,10 +14,6 @@ export default function CadastroPrestador() {
 
   const router = useRouter(); // ✅ agora router está disponível
 
-  const trocarDetela = () => {
-    router.push('/boas_vindas'); // ✅ Navega para tela de boas-vindas
-  };
-
   const escolherFoto = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -39,7 +35,7 @@ export default function CadastroPrestador() {
       foto
     });
 
-    trocarDetela(); // ✅ chama função ao cadastrar
+    router.push('/home'); // ✅ Vai para home.js ao cadastrar
   };
 
   return (
@@ -103,15 +99,15 @@ export default function CadastroPrestador() {
         </TouchableOpacity>
 
         {/* Texto de Login */}
-<Text style={styles.loginLink}>
-  Já tem uma conta?{' '}
-  <Text
-    style={{ color: '#2563EB' }}
-    onPress={() => router.replace('/login_cadastro')}
-  >
-    Faça login
-  </Text>
-</Text>
+        <Text style={styles.loginLink}>
+          Já tem uma conta?{' '}
+          <Text
+            style={{ color: '#2563EB' }}
+            onPress={() => router.replace('/login_cadastro')}
+          >
+            Faça login
+          </Text>
+        </Text>
 
         {/* Termos */}
         <Text style={styles.termos}>
@@ -202,10 +198,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     fontSize: 16,
-  },
-  loginTexto: {
-    fontSize: 14,
-    marginBottom: 10,
   },
   termos: {
     fontSize: 12,
