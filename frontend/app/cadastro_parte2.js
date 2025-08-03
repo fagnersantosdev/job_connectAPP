@@ -103,9 +103,15 @@ export default function CadastroPrestador() {
         </TouchableOpacity>
 
         {/* Texto de Login */}
-        <Text style={styles.loginTexto}>
-          Já tem uma conta? <Text style={{ color: '#007BFF' }}>Faça login</Text>
-        </Text>
+<Text style={styles.loginLink}>
+  Já tem uma conta?{' '}
+  <Text
+    style={{ color: '#2563EB' }}
+    onPress={() => router.replace('/login_cadastro')}
+  >
+    Faça login
+  </Text>
+</Text>
 
         {/* Termos */}
         <Text style={styles.termos}>
@@ -206,6 +212,7 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
     marginBottom: 10,
+    marginTop: 10
   },
   footer: {
     fontSize: 13,

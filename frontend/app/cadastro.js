@@ -123,9 +123,15 @@ export default function CadastroScreen() {
             <Text style={styles.textoBotao}>Cadastrar</Text>
           </TouchableOpacity>
 
-          <Text style={styles.loginText}>
-            Já tem uma conta? <Text style={styles.loginLink}>Faça Login</Text>
-          </Text>
+            <Text style={styles.loginText}>
+        Já tem uma conta?{' '}
+        <Text
+          style={styles.loginLink}
+          onPress={() => router.replace('/login_cadastro')} // 🔹 vai direto para o login
+        >
+          Faça Login
+        </Text>
+      </Text>
 
           <Text style={styles.politica}>
             Ao continuar, você concorda com nossos{' '}

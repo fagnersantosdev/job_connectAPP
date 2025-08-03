@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+
 
 export default function TelaInicial() {
+  const router = useRouter();
+
   const handleComecar = () => {
-    // Ação futura aqui — por enquanto não faz nada
-    console.log('Botão "Começar" pressionado');
+    router.push('/home');  // Navega para a rota /home
   };
+
 
   return (
     <View style={styles.container}>
