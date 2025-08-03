@@ -1,111 +1,109 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 
-export default function TelaInicial() {
-  const handleComecar = () => {
-    // Ação futura aqui — por enquanto não faz nada
-    console.log('Botão "Começar" pressionado');
-  };
+// Paleta de cores utilizada no app
+const COLORS = {
+  background: '#e4f0fd',
+  primary: '#06437e',
+  buttonBackground: '#f5b700',
+  buttonText: '#ffffff',
+  textDefault: '#333333',
+};
 
-  return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        source={require('../assets/images/logo-Jobconnect.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+// Tamanhos, margens e espaçamentos padronizados para a tela
+const SIZES = {
+  logoWidth: 300,
+  logoHeight: 200,
+  titleFontSize: 28,
+  descriptionFontSize: 16,
+  buttonFontSize: 16,
+  paddingHorizontal: 20,
+  buttonPaddingVertical: 15,
+  buttonPaddingHorizontal: 60,
+  borderRadius: 12,
+  logoMarginBottom: 30,
+  descriptionMarginBottom: 40,
+};
 
-      {/* Ilustração principal */}
-      <Image
-        source={require('../assets/images/image-removebg-2.png')}
-        style={styles.ilustracao}
-        resizeMode="contain"
-      />
+// Componente da tela de boas-vindas
+export default function BoasVindasScreen() {
+    const router = useRouter();
 
-      {/* Título */}
-      <Text style={styles.titulo}>
-        Conectando você ao  profissional ideal
-      </Text>
+    // Função para navegar para a próxima tela (a tela de seleção de perfil)
+    const handleStart = () => {
+        // Redireciona para a tela de seleção de perfil
+        router.push('selection');
+    };
 
-      {/* Descrição */}
-      <Text style={[styles.descricao,{fontWeight:"bold"}]}>
-        Encontre prestadores de serviço de forma rápida, prática e segura 
-        direto pelo seu celular
-      </Text>
+    return (
+        <View style={styles.container}>
+            {/* Logo do aplicativo */}
+            <Image
+                source={require('../assets/images/logo-Jobconnect.png')}
+                style={styles.logo}
+                resizeMode="contain"
+            />
 
-      {/* Botão Começar */}
-      <TouchableOpacity style={styles.botao} onPress={handleComecar}>
-        <Text style={styles.textoBotao}>Começar</Text>
-      </TouchableOpacity>
+            {/* Título principal */}
+            <Text style={styles.title}>Conectando você ao profissional ideal</Text>
 
-      {/* Footer */}
-      <Text style={styles.footer}>
-        “JobConnect” – Conectando serviços,{'\n'} facilitando sua vida!
-      </Text>
-    </View>
-  );
+            {/* Descrição */}
+            <Text style={styles.description}>
+                Encontre prestadores de serviço de forma rápida, prática e segura direto pelo seu celular.
+            </Text>
+
+            {/* Botão para começar a usar */}
+            <TouchableOpacity style={styles.startButton} onPress={handleStart}>
+                <Text style={styles.startButtonText}>Vamos Começar</Text>
+            </TouchableOpacity>
+        </View>
+    );
 }
 
+// Estilos visuais aplicados na tela
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  alignItems: 'center',      // Centraliza na horizontal
-  justifyContent: 'center',  // Centraliza na vertical
-  paddingHorizontal: 20,     // Mantém só um respiro lateral
-  backgroundColor: 'transparent', // Fundo vem do _layout.js
-  },
-  logo: {
-    width: 300,
-    height: 200,
-    alignSelf: 'center',
-    resizeMode: 'contain',
-    marginTop: 0,
-    marginBottom: -60,
-  },
-  ilustracao: {
-    width: '80%',
-    height: 220,
-    marginVertical: 30,
-    marginBottom: 10,
-    
-  },
-  titulo: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: '#0D47A1',
-    textAlign: 'center',
-    marginBottom: 30,
-     lineHeight: 35,
-    paddingHorizontal: 30
-
-  },
-  descricao: {
-    fontSize: 15,
-    textAlign: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 30,
-    color: '#fff',
-      lineHeight: 25,
-  },
-  botao: {
-    backgroundColor: '#FFD233',
-    paddingVertical: 15,
-    paddingHorizontal: 60,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  textoBotao: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  footer: {
-    fontSize: 13,
-    color: '#fff',
-    textAlign: 'center',
-    marginTop: 10,
-     marginBottom: 30,
-  },
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: SIZES.paddingHorizontal,
+    },
+    logo: {
+        width: SIZES.logoWidth,
+        height: SIZES.logoHeight,
+        marginBottom: SIZES.logoMarginBottom,
+    },
+    title: {
+        fontSize: SIZES.titleFontSize,
+        fontWeight: 'bold',
+        color: COLORS.primary,
+        textAlign: 'center',
+        marginBottom: 10,
+        lineHeight: 35,
+        paddingHorizontal: 30,
+    },
+    description: {
+        fontSize: SIZES.descriptionFontSize,
+        color: COLORS.primary,
+        textAlign: 'center',
+        marginBottom: SIZES.descriptionMarginBottom,
+        paddingHorizontal: 30,
+    },
+    startButton: {
+        backgroundColor: COLORS.buttonBackground,
+        paddingVertical: SIZES.buttonPaddingVertical,
+        paddingHorizontal: SIZES.buttonPaddingHorizontal,
+        borderRadius: SIZES.borderRadius,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    startButtonText: {
+        color: COLORS.buttonText,
+        fontWeight: 'bold',
+        fontSize: 18,
+    },
 });
