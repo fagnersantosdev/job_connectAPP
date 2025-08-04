@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   startButtonText: {
-    color: COLORS.buttonText,
+    color: '#F7F7F7',
     fontWeight: 'bold',
     fontSize: 18,
   },

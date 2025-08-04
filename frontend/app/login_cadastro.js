@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard
+  Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
+// Importa a URL base do backend
+import { BASE_URL } from './api_config';
 
 const logo = require('../assets/images/logo-Jobconnect.png');
 
@@ -13,7 +16,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(false); // <- NOVO
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -29,6 +34,43 @@ export default function LoginScreen() {
     router.push('/cadastro');
   };
 
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Por favor, preencha todos os campos.');
+      return;
+    }
+
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Usa a BASE_URL do arquivo de configuração para montar a URL completa
+      const response = await fetch(`${BASE_URL}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Login bem-sucedido!', data);
+        // Salvar token e redirecionar
+        router.push('/home');
+      } else {
+        console.error('Erro de login:', data.message);
+        setError(data.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      }
+    } catch (err) {
+      console.error('Erro de rede:', err);
+      setError('Não foi possível conectar ao servidor. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoiding}
@@ -41,8 +83,6 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={keyboardVisible}
         scrollEnabled={keyboardVisible}
       >
-  
-
         <View style={styles.container}>
           {/* Logo */}
           <View style={styles.logoContainer}>
@@ -86,14 +126,21 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Exibe mensagem de erro */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
             {/* Esqueceu a senha */}
             <TouchableOpacity>
               <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
             </TouchableOpacity>
 
             {/* Botão Entrar */}
-            <TouchableOpacity style={styles.loginButton}>
-              <Text style={styles.loginButtonText}>Entrar</Text>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Entrar</Text>
+              )}
             </TouchableOpacity>
 
             <Text style={styles.orText}>ou</Text>
@@ -123,7 +170,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   keyboardAvoiding: {
     flex: 1,
-    backgroundColor: 'transparent', // pode ajustar conforme o fundo desejado
+    backgroundColor: 'transparent',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -152,7 +199,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   inputContainer: {
-    flexDirection: 'row', // lado a lado para senha, e pra e-mail funciona igual
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
     borderRadius: 8,
@@ -212,5 +259,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 40,
     marginTop: 40,
+  },
+  errorText: {
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });
