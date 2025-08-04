@@ -141,7 +141,7 @@ export default function CadastroScreen() {
         </View>
 
         <Text style={styles.rodape}>
-          "JobConnect – Conectando serviços, {'\n'}facilitando sua vida!"
+          JobConnect – Conectando serviços, {'\n'}facilitando sua vida!
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

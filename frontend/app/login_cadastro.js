@@ -112,7 +112,7 @@ export default function LoginScreen() {
 
           {/* Rodapé */}
           <Text style={styles.footerText}>
-            "JobConnect – Conectando serviços,{'\n'}facilitando sua vida!"
+            JobConnect – Conectando serviços,{'\n'}facilitando sua vida!
           </Text>
         </View>
       </ScrollView>
