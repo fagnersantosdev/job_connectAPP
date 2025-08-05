@@ -1,18 +1,32 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Image, ScrollView
+  Image, ScrollView, Modal
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+
+// Imagem do logo
+const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function CadastroPrestador() {
   const [areaAtuacao, setAreaAtuacao] = useState('');
   const [cep, setCep] = useState('');
   const [descricao, setDescricao] = useState('');
   const [foto, setFoto] = useState(null);
+  // Novo estado para o modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalTitle, setModalTitle] = useState('');
 
-  const router = useRouter(); // ✅ agora router está disponível
+  const router = useRouter();
+
+  // Função para exibir o modal
+  const showAlert = (title, message) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
 
   const escolherFoto = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -27,15 +41,31 @@ export default function CadastroPrestador() {
     }
   };
 
-  const handleCadastro = () => {
-    console.log({
-      areaAtuacao,
-      cep,
-      descricao,
-      foto
-    });
+  const handleCadastro = async () => {
+    // Validação de campos
+    if (!areaAtuacao || !cep || !descricao) {
+        showAlert('Erro', 'Por favor, preencha todos os campos.');
+        return;
+    }
+    
+    // Validação de CEP
+    if (cep.length !== 8) {
+      showAlert('Erro', 'O CEP deve ter 8 dígitos.');
+      return;
+    }
 
-    router.push('/home'); // ✅ Vai para home.js ao cadastrar
+    // Simulação de chamada de API para enviar dados do prestador
+    try {
+        console.log({ areaAtuacao, cep, descricao, foto });
+        showAlert('Sucesso', 'Cadastro do prestador concluído com sucesso!');
+        setTimeout(() => {
+            setModalVisible(false);
+            router.push('/home'); // Redireciona para a home
+        }, 2000);
+    } catch (error) {
+        showAlert('Erro', 'Ocorreu um erro ao finalizar o cadastro.');
+        console.error(error);
+    }
   };
 
   return (
@@ -43,19 +73,14 @@ export default function CadastroPrestador() {
       contentContainerStyle={styles.container} 
       showsVerticalScrollIndicator={false}
     >
-      {/* Logo */}
       <Image 
-        source={require('../assets/images/logo-Jobconnect.png')} 
+        source={logo} 
         style={styles.logo} 
         resizeMode="contain"
       />
-
-      {/* Card branco envolvendo os elementos */}
       <View style={styles.card}>
         <Text style={styles.titulo}>Cadastro</Text>
         <Text style={styles.subtitulo}>Segunda Parte</Text>
-
-        {/* Inputs */}
         <TextInput
           style={styles.input}
           placeholder="Área de Atuação"
@@ -68,6 +93,7 @@ export default function CadastroPrestador() {
           value={cep}
           onChangeText={setCep}
           keyboardType="numeric"
+          maxLength={8}
         />
         <TextInput
           style={[styles.input, { height: 80 }]}
@@ -76,15 +102,11 @@ export default function CadastroPrestador() {
           onChangeText={setDescricao}
           multiline
         />
-
-        {/* Upload de Foto */}
         <TouchableOpacity style={styles.uploadButton} onPress={escolherFoto}>
           <Text style={{ color: '#555' }}>
             {foto ? 'Alterar Foto' : 'Upload de Foto'}
           </Text>
         </TouchableOpacity>
-
-        {/* Preview da Foto */}
         {foto && (
           <Image 
             source={{ uri: foto }} 
@@ -92,13 +114,9 @@ export default function CadastroPrestador() {
             resizeMode="cover"
           />
         )}
-
-        {/* Botão Cadastrar */}
         <TouchableOpacity style={styles.botao} onPress={handleCadastro}>
           <Text style={styles.botaoTexto}>Cadastrar</Text>
         </TouchableOpacity>
-
-        {/* Texto de Login */}
         <Text style={styles.loginLink}>
           Já tem uma conta?{' '}
           <Text
@@ -108,17 +126,35 @@ export default function CadastroPrestador() {
             Faça login
           </Text>
         </Text>
-
-        {/* Termos */}
         <Text style={styles.termos}>
           Ao cadastrar, você concorda com nossos Termos de Serviço e Política de Privacidade
         </Text>
       </View>
-
-      {/* Footer com espaço extra */}
       <Text style={styles.footer}>
         “JobConnect” – Conectando serviços,{'\n'} facilitando sua vida!
       </Text>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setModalVisible(!modalVisible)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -212,5 +248,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 50,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    width: 300,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#FACC15',
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    width: '50%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

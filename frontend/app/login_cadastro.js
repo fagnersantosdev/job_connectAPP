@@ -137,7 +137,7 @@ export default function LoginScreen() {
             {/* Botão Entrar */}
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
               {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#FFF" />
               ) : (
                 <Text style={styles.loginButtonText}>Entrar</Text>
               )}
@@ -150,16 +150,17 @@ export default function LoginScreen() {
               <Text style={styles.registerText}>Cadastre-se</Text>
             </TouchableOpacity>
 
-            {/* Termos */}
-            <Text style={styles.termsText}>
-              Ao continuar você concorda com os nossos{'\n'}
-              Termos de Serviço e Política de Privacidade
-            </Text>
-          </View>
+            <Text style={styles.politica}>
+                        Ao continuar, você concorda com nossos{' '}
+                        <Text style={styles.link}>Termos de Serviço</Text> e{' '}
+                        <Text style={styles.link}>Política de Privacidade</Text>
+                      </Text>
+                    </View>
+            
 
           {/* Rodapé */}
           <Text style={styles.footerText}>
-            JobConnect – Conectando serviços,{'\n'}facilitando sua vida!
+            "JobConnect – Conectando serviços,{'\n'}facilitando sua vida!"
           </Text>
         </View>
       </ScrollView>
@@ -175,8 +176,8 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'space-between',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: 35,
+    paddingHorizontal:25,
   },
   container: {
     flex: 1,
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   logoImage: {
-    width: 300,
+    width: 250,
     height: 200,
     resizeMode: 'contain',
     marginBottom: 0,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#CBD5E1',
     paddingHorizontal: 12,
@@ -223,16 +224,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   loginButton: {
-    backgroundColor: '#FACC15',
-    borderRadius: 8,
+    backgroundColor: '#FFD233',
+    borderRadius: 30,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 12,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   loginButtonText: {
-    color: '#000',
+    color: '#003A6F',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
   },
   orText: {
     textAlign: 'center',
@@ -248,10 +254,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
   },
-  termsText: {
+  loginLink: {
+    color: '#2563EB',
+    fontWeight: '600',
+  },
+  politica: {
     textAlign: 'center',
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#555',
+    marginTop: 15,
   },
   footerText: {
     textAlign: 'center',

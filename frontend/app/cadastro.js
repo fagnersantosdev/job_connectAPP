@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Image, Alert, ScrollView, KeyboardAvoidingView,
-  Platform, Keyboard
+  Image, ScrollView, KeyboardAvoidingView,
+  Platform, Keyboard, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+
+// Imagem do logo
+const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState('');
@@ -17,8 +20,13 @@ export default function CadastroScreen() {
   const [showSenha, setShowSenha] = useState(false);
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalTitle, setModalTitle] = useState('');
 
   const router = useRouter();
+  // Obtém os parâmetros da rota
+  const { role } = useLocalSearchParams();
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -30,22 +38,39 @@ export default function CadastroScreen() {
     };
   }, []);
 
-  // Função para trocar de tela
-  const trocarDetela = () => {
-    router.push('/cadastro_parte2');
+  const showAlert = (title, message) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
   };
 
-  const handleCadastro = () => {
-    if (senha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+  const handleCadastro = async () => {
+    if (!nome || !cpf || !email || !telefone || !senha || !confirmarSenha) {
+      showAlert('Erro', 'Por favor, preencha todos os campos.');
       return;
     }
 
-    console.log({ nome, cpf, email, telefone });
-    Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+    if (senha !== confirmarSenha) {
+      showAlert('Erro', 'As senhas não coincidem.');
+      return;
+    }
 
-    // Chama a função para trocar de tela
-    trocarDetela();
+    // Lógica de cadastro (simulada)
+    try {
+        // Simulação de chamada de API
+        console.log({ nome, cpf, email, telefone, role });
+        
+        // Redireciona com base no perfil selecionado
+        if (role === 'prestador') {
+            router.push('/cadastro_parte2');
+        } else {
+            router.push('/home'); // Para o cliente, vai direto para a home
+        }
+
+    } catch (error) {
+      showAlert('Erro', 'Ocorreu um erro na comunicação com o servidor.');
+      console.error(error);
+    }
   };
 
   return (
@@ -60,10 +85,11 @@ export default function CadastroScreen() {
         scrollEnabled={keyboardVisible}
         keyboardShouldPersistTaps="handled"
       >
-        <Image source={require('../assets/images/logo-Jobconnect.png')} style={styles.logo} />
+        <Image source={logo} style={styles.logo} />
 
         <View style={styles.card}>
           <Text style={styles.title}>Cadastro</Text>
+          {role === 'prestador' && <Text style={styles.subtitulo}>Dados Pessoais</Text>}
 
           <TextInput
             placeholder="Nome completo"
@@ -120,18 +146,20 @@ export default function CadastroScreen() {
           </View>
 
           <TouchableOpacity style={styles.botao} onPress={handleCadastro}>
-            <Text style={styles.textoBotao}>Cadastrar</Text>
+            <Text style={styles.textoBotao}>
+              {role === 'prestador' ? 'Continuar' : 'Cadastrar'}
+            </Text>
           </TouchableOpacity>
 
-            <Text style={styles.loginText}>
-        Já tem uma conta?{' '}
-        <Text
-          style={styles.loginLink}
-          onPress={() => router.replace('/login_cadastro')} // 🔹 vai direto para o login
-        >
-          Faça Login
-        </Text>
-      </Text>
+          <Text style={styles.loginText}>
+            Já tem uma conta?{' '}
+            <Text
+              style={styles.loginLink}
+              onPress={() => router.replace('/login_cadastro')}
+            >
+              Faça Login
+            </Text>
+          </Text>
 
           <Text style={styles.politica}>
             Ao continuar, você concorda com nossos{' '}
@@ -144,6 +172,28 @@ export default function CadastroScreen() {
           JobConnect – Conectando serviços, {'\n'}facilitando sua vida!
         </Text>
       </ScrollView>
+
+       <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setModalVisible(!modalVisible)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -179,11 +229,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
+  subtitulo: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#1D4ED8',
+    marginBottom: 10,
+    fontWeight: '500',
+  },
   input: {
     backgroundColor: '#F9FAFB',
     borderColor: '#CBD5E1',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 12,
     marginBottom: 10,
   },
@@ -193,7 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderColor: '#CBD5E1',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 20,
     paddingHorizontal: 12,
     marginBottom: 10,
   },
@@ -202,11 +259,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   botao: {
-    backgroundColor: '#FACC15',
+    backgroundColor: '#FFD233',
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 30,
     alignItems: 'center',
     marginTop: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   textoBotao: {
     fontWeight: 'bold',
@@ -235,5 +297,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#f8f8f8ff',
     marginTop: 25,
+  },
+  // Estilos para o modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    width: 300,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#FACC15',
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    width: '50%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

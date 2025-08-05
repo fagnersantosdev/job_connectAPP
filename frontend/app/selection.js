@@ -6,26 +6,27 @@ import { useRouter } from 'expo-router';
 // Paleta de cores utilizadas no app
 const COLORS = {
   primary: '#06437e',
-  buttonBackground: '#f5b700',
-  buttonText: '#ffffff',
-  buttonSelectedBorder: '#f5b700',
+  buttonBackground: '#FFD233',
+  buttonText: '#003A6F',
+  buttonSelectedBorder: '#FFD233',
   buttonSelectedBackground: '#f5f5f5',
   buttonDefaultBorder: '#cccccc',
   textDefault: '#333333',
+  errorText: '#ff0000', // Cor para o texto de erro
 };
 
 // Tamanhos, margens e espaçamentos padronizados para a tela
 const SIZES = {
-  logoWidth: 300,
+  logoWidth: 250,
   logoHeight: 200,
   titleFontSize: 25,
   buttonFontSize: 16,
   loginFontSize: 14,
   footerFontSize: 13,
   paddingHorizontal: 20,
-  buttonPaddingVertical: 12,
-  buttonPaddingHorizontal: 40,
-  borderRadius: 12,
+  buttonPaddingVertical: 15,
+  buttonPaddingHorizontal: 45,
+  borderRadius: 20,
   titleMarginVertical: 15,
   buttonMarginVertical: 10,
   loginMarginTop: 15,
@@ -35,63 +36,64 @@ const SIZES = {
 
 // Componente da tela de seleção de perfil
 export default function SelectionScreen() {
-    // Estado para armazenar o papel selecionado pelo usuário: 'cliente' ou 'prestador'
     const [selectedRole, setSelectedRole] = useState(null);
+    const [error, setError] = useState('');
     const router = useRouter();
 
-    // Função para lidar com o início, navegando para a tela de login/cadastro
     const handleStart = () => {
-        // Redireciona para a tela de login/cadastro
-        router.push('login_cadastro');
+        if (!selectedRole) {
+            setError('Por favor, selecione se você é cliente ou prestador.');
+            return;
+        }
+
+        setError(''); // Limpa a mensagem de erro
+        // Redireciona para a tela de login/cadastro, passando o papel selecionado como parâmetro
+        router.push({
+            pathname: 'login_cadastro',
+            params: { role: selectedRole }
+        });
+    };
+
+    const handleRoleSelection = (role) => {
+        setSelectedRole(role);
+        setError('');
     };
 
     return (
         <View style={styles.container}>
-            {/* Logo do aplicativo */}
             <Image
                 source={require('../assets/images/logo-Jobconnect.png')}
                 style={styles.logo}
                 resizeMode="contain"
             />
-
-            {/* Título de boas-vindas */}
             <Text style={styles.title}>Bem vindo</Text>
-
-            {/* Botão para selecionar o papel de Cliente */}
             <TouchableOpacity
                 style={[
                     styles.selectButton,
                     selectedRole === 'cliente' && styles.selectedButton,
                 ]}
-                onPress={() => setSelectedRole('cliente')}
+                onPress={() => handleRoleSelection('cliente')}
             >
                 <Ionicons name="person" size={24} color={COLORS.primary} />
                 <Text style={styles.selectButtonText}>Sou Cliente</Text>
             </TouchableOpacity>
-
-            {/* Botão para selecionar o papel de Prestador */}
             <TouchableOpacity
                 style={[
                     styles.selectButton,
                     selectedRole === 'prestador' && styles.selectedButton,
                 ]}
-                onPress={() => setSelectedRole('prestador')}
+                onPress={() => handleRoleSelection('prestador')}
             >
                 <Ionicons name="construct" size={24} color={COLORS.primary} />
                 <Text style={styles.selectButtonText}>Sou Prestador</Text>
             </TouchableOpacity>
-
-            {/* Texto com opção de login */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <Text style={styles.loginText}>
                 Já tem uma conta? <Text style={styles.loginLink}>Faça Login</Text>
             </Text>
-
-            {/* Botão de começar */}
             <TouchableOpacity onPress={handleStart} style={styles.startButton}>
                 <Text style={styles.startButtonText}>Começar</Text>
             </TouchableOpacity>
-
-            {/* Texto de rodapé - CORRIGIDO */}
             <Text style={styles.footerText}>
                 JobConnect – Conectando serviços, {'\n'}facilitando sua vida!
             </Text>
@@ -99,7 +101,6 @@ export default function SelectionScreen() {
     );
 }
 
-// Estilos visuais aplicados na tela
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -140,13 +141,20 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
         fontWeight: '500',
     },
+    errorText: {
+        color: COLORS.errorText,
+        textAlign: 'center',
+        marginTop: 10,
+        marginBottom: 5,
+        fontSize: 14,
+    },
     loginText: {
         marginTop: SIZES.loginMarginTop,
         fontSize: SIZES.loginFontSize,
-        color: COLORS.textDefault,
+        color: '#FFF',
     },
     loginLink: {
-        color: COLORS.primary,
+        color: '#1748A1',
         fontWeight: 'bold',
     },
     startButton: {
@@ -155,11 +163,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: SIZES.buttonPaddingHorizontal,
         borderRadius: SIZES.borderRadius,
         marginTop: SIZES.startButtonMarginTop,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
     startButtonText: {
         color: COLORS.buttonText,
         fontWeight: 'bold',
-        fontSize: 18,
+        fontSize: SIZES.buttonFontSize,
     },
     footerText: {
         marginTop: SIZES.footerMarginTop,
