@@ -56,6 +56,11 @@ export default function HomeCliente() {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
+  // A função de navegação foi adicionada ao botão "Mais Serviços..."
+  const handleSeeAllServices = () => {
+    router.push('/services'); // Navega para a tela de todos os serviços
+  };
+
   return (
     <View style={styles.container}>
       {/* Cabeçalho */}
@@ -95,7 +100,8 @@ export default function HomeCliente() {
         {/* Profissionais em Destaque */}
         <View style={styles.featuredProfessionalsContainer}>
           <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
-          <TouchableOpacity onPress={() => { /* Navegar para tela de todos os serviços */ }}>
+          {/* O onPress foi adicionado aqui para usar a variável 'router' */}
+          <TouchableOpacity onPress={handleSeeAllServices}>
             <Text style={styles.seeAllText}>Mais Serviços...</Text>
           </TouchableOpacity>
         </View>
