@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#e4f0fd',
+    backgroundColor: 'transparent',
   },
   containerKeyboardVisible: {
     justifyContent: 'flex-start',
