@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: 10,
+    marginBottom: 10,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -140,8 +140,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logo: {
-    width: 150,
-    height: 40,
+    width: 120,
+    height:60,
   },
   profileIconContainer: {
     marginLeft: 'auto',

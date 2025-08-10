@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { IP_DO_SERVIDOR } from '../app/api_config';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard,
-  ActivityIndicator, Alert
+  ActivityIndicator, Alert // Importei o componente Alert para exibir mensagens de erro
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+// Carrega o logo localmente
 const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function LoginScreen() {
@@ -15,9 +17,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -36,43 +36,40 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     // Validação básica para evitar requisição vazia
     if (!email || !password) {
-      setError('Por favor, preencha todos os campos.');
+      Alert.alert('Erro no Login', 'Por favor, preencha todos os campos.');
       return;
     }
 
     setIsLoading(true);
-    setError('');
 
-    // ** Lógica de login com chamada de API real (substituindo a simulação) **
     try {
-      const response = await fetch('http://192.168.101.95:3000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await fetch(`${IP_DO_SERVIDOR}/api/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+        });
 
-      // Se a resposta for bem-sucedida (código 200, 201, etc.)
+      // Se a resposta for bem-sucedida
       if (response.ok) {
-        // Você pode processar a resposta do servidor aqui, por exemplo,
-        // salvando um token de autenticação.
+        // ... Lógica para processar a resposta, por exemplo, salvar um token
         // const data = await response.json();
         // console.log('Login bem-sucedido:', data);
 
-        // Se o login for bem-sucedido, navega para a tela home
+        //Alert.alert('Sucesso!', 'Login bem-sucedido!');
         router.push('/home_cliente');
       } else {
         // Se a resposta não for ok, exibe a mensagem de erro do backend
         const errorData = await response.json();
-        setError(errorData.message || 'E-mail ou senha incorretos.');
+        Alert.alert('Erro no Login', errorData.message || 'E-mail ou senha incorretos.');
       }
     } catch (e) {
       // Captura erros de rede (sem conexão, URL incorreta, etc.)
-      setError('Não foi possível conectar ao servidor. Verifique sua conexão.');
+      Alert.alert('Erro de Conexão', 'Não foi possível conectar ao servidor. Verifique sua conexão e o firewall.');
       console.error('Login error:', e);
     } finally {
-      // Finaliza o estado de carregamento, independentemente do sucesso ou falha
+      // Finaliza o estado de carregamento
       setIsLoading(false);
     }
   };
@@ -133,9 +130,6 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Texto de erro (adicionado) */}
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
             {/* Esqueceu a senha */}
             <TouchableOpacity onPress={() => {}}>
               <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
@@ -156,7 +150,6 @@ export default function LoginScreen() {
                 Não tem uma conta? <Text style={styles.registerLinkText}>Cadastre-se</Text>
               </Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </ScrollView>
@@ -229,12 +222,6 @@ const styles = StyleSheet.create({
   },
   icon: {
     paddingLeft: 10,
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 10,
-    marginTop: -5,
   },
   forgotPasswordText: {
     color: '#2563EB',

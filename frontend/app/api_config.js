@@ -10,3 +10,12 @@
 // - 'https://api.seu-dominio.com'
 
 export const BASE_URL = 'http://10.0.2.2:3000';
+
+//No seu projeto frontend, crie um arquivo chamado 'api_config.js'
+// Exemplo de caminho: src/api/api_config.js
+
+// Altere este valor para o IP da máquina que está rodando o backend
+
+const IP_DO_SERVIDOR = 'http://192.168.0.188:3000'; // Substitua pelo seu IP atual
+
+export { IP_DO_SERVIDOR };
