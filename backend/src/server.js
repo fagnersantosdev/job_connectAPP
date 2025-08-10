@@ -27,10 +27,10 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: {
-        origin: "*", // Permitir todas as origens para desenvolvimento. Em produção, especifique as origens do seu frontend.
-        methods: ["GET", "POST"]
-    }
+    cors: {
+    origin: "*", // Permitir todas as origens para desenvolvimento. Em produção, especifique as origens do seu frontend.
+    methods: ["GET", "POST"]
+    }
 });
 
 // Configurar o CORS para o Express (para requisições HTTP REST)
@@ -73,19 +73,18 @@ app.use('/', basic);
 
 // --- Lógica do Socket.IO (apenas conexão e salas, a emissão de mensagens será no controller) ---
 io.on('connection', (socket) => {
-    console.log(`[Socket.IO] Usuário conectado: ${socket.id}`);
+    console.log(`[Socket.IO] Usuário conectado: ${socket.id}`);
 
      // Um evento para o cliente se juntar a uma sala de chat (ex: sala da solicitacao_id)
     socket.on('joinRoom', (solicitacaoId) => {
     socket.join(solicitacaoId);
     console.log(`[Socket.IO] Usuário ${socket.id} entrou na sala: ${solicitacaoId}`);
     });
+    // Removido: socket.on('chatMessage', ...) - A emissão agora será feita pelo controller HTTP POST
 
-    // Removido: socket.on('chatMessage', ...) - A emissão agora será feita pelo controller HTTP POST
-
-    socket.on('disconnect', () => {
-        console.log(`[Socket.IO] Usuário desconectado: ${socket.id}`);
-    });
+    socket.on('disconnect', () => {
+    console.log(`[Socket.IO] Usuário desconectado: ${socket.id}`);
+    });
 });
 
 
@@ -97,14 +96,14 @@ io.on('connection', (socket) => {
 //     console.log('Pressione Ctrl+C para parar.');
 // });
 
-server.listen(PORT, HOST, () => { // Use 'HOST' aqui, já que ele será '0.0.0.0'
-    console.log(`Servidor JobConnect rodando em http://${HOST}:${PORT}`);
-    console.log(`Socket.IO escutando em ws://${HOST}:${PORT}`);
-    console.log('Pressione Ctrl+C para parar.');
-});
-
-// server.listen(PORT, '0.0.0.0', () => { // <--- Mude 'HOST' para '0.0.0.0' diretamente
-//     console.log(`Servidor JobConnect rodando em http://0.0.0.0:${PORT}`);
-//     console.log(`Socket.IO escutando em ws://0.0.0.0:${PORT}`);
+// server.listen(PORT, HOST, () => { // Use 'HOST' aqui, já que ele será '0.0.0.0'
+//     console.log(`Servidor JobConnect rodando em http://${HOST}:${PORT}`);
+//     console.log(`Socket.IO escutando em ws://${HOST}:${PORT}`);
 //     console.log('Pressione Ctrl+C para parar.');
 // });
+
+server.listen(PORT, '0.0.0.0', () => { // <--- Mude 'HOST' para '0.0.0.0' diretamente
+    console.log(`Servidor JobConnect rodando em http://0.0.0.0:${PORT}`);
+    console.log(`Socket.IO escutando em ws://0.0.0.0:${PORT}`);
+    console.log('Pressione Ctrl+C para parar.');
+});
