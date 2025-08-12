@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Image, ScrollView, FlatList
+  Image, ScrollView, FlatList, Animated, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-// Imagem do logo (assumindo que o logo é o mesmo)
 const logo = require('../assets/images/logo-Jobconnect.png');
 
-// Dados de exemplo para as categorias
 const serviceCategories = [
   { id: '1', name: 'Pedreiro', icon: 'hammer-outline' },
   { id: '2', name: 'Encanamento', icon: 'water-outline' },
@@ -18,7 +16,6 @@ const serviceCategories = [
   { id: '5', name: 'Mais Serviços...', icon: 'ellipsis-horizontal-circle-outline' },
 ];
 
-// Dados de exemplo para os profissionais
 const featuredProfessionals = [
   { id: '1', name: 'Carlos Silva', job: 'Eletricista', rating: 4.8, distance: '3km', image: 'https://placehold.co/100x100/png?text=CS' },
   { id: '2', name: 'Ana Ferreira', job: 'Faxineira', rating: 4.5, distance: '5km', image: 'https://placehold.co/100x100/png?text=AF' },
@@ -26,7 +23,6 @@ const featuredProfessionals = [
   { id: '4', name: 'Cristiano Martins', job: 'Encanador', rating: 4.6, distance: '1km', image: 'https://placehold.co/100x100/png?text=CM' },
 ];
 
-// Componente para renderizar cada item de categoria
 const CategoryItem = ({ item }) => (
   <View style={styles.categoryItem}>
     <View style={styles.categoryIconContainer}>
@@ -36,7 +32,6 @@ const CategoryItem = ({ item }) => (
   </View>
 );
 
-// Componente para renderizar cada card de profissional
 const ProfessionalCard = ({ professional }) => (
   <View style={styles.professionalCard}>
     <Image source={{ uri: professional.image }} style={styles.professionalImage} />
@@ -52,22 +47,60 @@ const ProfessionalCard = ({ professional }) => (
   </View>
 );
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
 export default function HomeCliente() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.7)).current; // menu começa escondido fora da tela
   const router = useRouter();
 
-  // A função de navegação foi adicionada ao botão "Mais Serviços..."
+  // Controla a animação do menu
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: menuVisible ? 0 : -SCREEN_WIDTH * 0.7,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [menuVisible]);
+
   const handleSeeAllServices = () => {
-    router.push('/services'); // Navega para a tela de todos os serviços
+    router.push('/services');
   };
+
+  const closeMenu = () => setMenuVisible(false);
 
   return (
     <View style={styles.container}>
+      {/* Overlay escuro atrás do menu (quando visível) */}
+      {menuVisible && (
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={closeMenu} />
+      )}
+
+      {/* Menu lateral animado */}
+      <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
+        <Text style={styles.menuTitle}>Menu</Text>
+        <TouchableOpacity onPress={() => { router.push('/profile'); closeMenu(); }}>
+          <Text style={styles.menuItem}>Perfil</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => { router.push('/settings'); closeMenu(); }}>
+          <Text style={styles.menuItem}>Configurações</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={closeMenu}>
+          <Text style={[styles.menuItem, { color: 'red' }]}>Sair</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
       {/* Cabeçalho */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(true)}>
+          <Ionicons name="menu-outline" size={32} color="#06437e" />
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
         </View>
+
         <TouchableOpacity style={styles.profileIconContainer}>
           <Ionicons name="person-circle-outline" size={40} color="#06437e" />
         </TouchableOpacity>
@@ -97,10 +130,9 @@ export default function HomeCliente() {
           contentContainerStyle={styles.categoriesList}
         />
 
-        {/* Profissionais em Destaque */}
+        {/* Profissionais em destaque */}
         <View style={styles.featuredProfessionalsContainer}>
           <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
-          {/* O onPress foi adicionado aqui para usar a variável 'router' */}
           <TouchableOpacity onPress={handleSeeAllServices}>
             <Text style={styles.seeAllText}>Mais Serviços...</Text>
           </TouchableOpacity>
@@ -119,33 +151,25 @@ export default function HomeCliente() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#e4f0fd',
-    paddingTop: 50,
-  },
-  scrollView: {
-    paddingHorizontal: 20,
-  },
+  container: { flex: 1, backgroundColor: 'transparent', paddingTop: 50 },
+
+  scrollView: { paddingHorizontal: 20 },
+
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
     marginBottom: 10,
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  logo: {
-    width: 120,
-    height:60,
-  },
-  profileIconContainer: {
-    marginLeft: 'auto',
-  },
+
+  menuButton: { padding: 5, justifyContent: 'center', alignItems: 'center' },
+
+  logoContainer: { flex: 1, alignItems: 'center' },
+
+  logo: { width: 120, height: 60 },
+
+  profileIconContainer: { marginLeft: 'auto' },
+
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,34 +178,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 20,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    height: 50,
-    fontSize: 16,
-    color: '#333',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#06437e',
-    marginBottom: 10,
-  },
-  categoriesList: {
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  categoryItem: {
-    alignItems: 'center',
-    marginRight: 20,
-  },
+
+  searchIcon: { marginRight: 10 },
+
+  searchInput: { flex: 1, height: 50, fontSize: 16, color: '#333' },
+
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#06437e', marginBottom: 10 },
+
+  categoriesList: { marginBottom: 20 },
+
+  categoryItem: { alignItems: 'center', marginRight: 20 },
+
   categoryIconContainer: {
     backgroundColor: '#fff',
     borderRadius: 35,
@@ -190,30 +198,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-  categoryText: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#333',
-  },
+
+  categoryText: { marginTop: 5, fontSize: 12, color: '#333' },
+
   featuredProfessionalsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
   },
-  seeAllText: {
-    color: '#06437e',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  professionalsList: {
-    paddingBottom: 20,
-  },
+
+  seeAllText: { color: '#06437e', fontWeight: 'bold', fontSize: 14 },
+
+  professionalsList: { paddingBottom: 20 },
+
   professionalCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -222,44 +218,54 @@ const styles = StyleSheet.create({
     marginRight: 15,
     alignItems: 'center',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    width: 250, // Ajuste para o card ter uma largura fixa
+    width: 250,
   },
-  professionalImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 15,
+
+  professionalImage: { width: 80, height: 80, borderRadius: 40, marginRight: 15 },
+
+  professionalInfo: { flex: 1, justifyContent: 'center' },
+
+  professionalName: { fontSize: 16, fontWeight: 'bold', color: '#06437e' },
+
+  ratingContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 },
+
+  ratingText: { marginLeft: 5, fontSize: 14, color: '#333' },
+
+  professionalJob: { fontSize: 14, color: '#555' },
+
+  professionalDistance: { fontSize: 12, color: '#888', marginTop: 5 },
+
+  // Menu lateral
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    zIndex: 5,
   },
-  professionalInfo: {
-    flex: 1,
-    justifyContent: 'center',
+
+  menuContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: SCREEN_WIDTH * 0.15,
+    backgroundColor: '#fff',
+    padding: 20,
+    elevation: 5,
+    zIndex: 10,
   },
-  professionalName: {
-    fontSize: 16,
+
+  menuTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#06437e',
+    marginBottom: 15,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 5,
-  },
-  ratingText: {
-    marginLeft: 5,
-    fontSize: 14,
-    color: '#333',
-  },
-  professionalJob: {
-    fontSize: 14,
-    color: '#555',
-  },
-  professionalDistance: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 5,
+
+  menuItem: {
+    fontSize: 16,
+    marginBottom: 15,
   },
 });
