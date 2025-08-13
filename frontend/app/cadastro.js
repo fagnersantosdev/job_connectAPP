@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, ScrollView, KeyboardAvoidingView,
-  Platform, Keyboard, Modal
+  Platform, Keyboard, Modal, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { IP_DO_SERVIDOR } from '../app/api_config';
 
 // Imagem do logo
 const logo = require('../assets/images/logo-Jobconnect.png');
@@ -23,9 +24,9 @@ export default function CadastroScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [modalTitle, setModalTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
-  // Obtém os parâmetros da rota
   const { role } = useLocalSearchParams();
 
   useEffect(() => {
@@ -55,21 +56,63 @@ export default function CadastroScreen() {
       return;
     }
 
-    // Lógica de cadastro (simulada)
-    try {
-        // Simulação de chamada de API
-        console.log({ nome, cpf, email, telefone, role });
-        
-        // Redireciona com base no perfil selecionado
-        if (role === 'prestador') {
-            router.push('/cadastro_parte2');
-        } else {
-            router.push('/home'); // Para o cliente, vai direto para a home
-        }
+    setIsLoading(true);
 
+    try {
+      const serverIp = IP_DO_SERVIDOR || (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+      const apiUrl = `${serverIp}/api/register`;
+
+      console.log('Tentando conectar ao endpoint:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nome,
+          cpf,
+          email,
+          telefone,
+          senha,
+          role,
+        }),
+      });
+
+      console.log('Status da resposta:', response.status);
+
+      // Verifique se a resposta é JSON antes de tentar fazer o parse
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.indexOf('application/json') !== -1) {
+        const data = await response.json();
+        
+        if (response.ok) {
+          console.log('Cadastro bem-sucedido!', data);
+          if (role === 'prestador') {
+            router.push('/cadastro_parte2');
+          } else {
+            showAlert('Sucesso', 'Seu cadastro foi realizado com sucesso!');
+            router.push('/home');
+          }
+        } else {
+          showAlert('Erro', data.message || 'Ocorreu um erro no cadastro. Tente novamente.');
+        }
+      } else {
+        const textResponse = await response.text();
+        console.error('A resposta do servidor não é JSON. Resposta completa:', textResponse);
+        showAlert(
+          'Erro do Servidor',
+          'Ocorreu um erro inesperado no servidor. A resposta não foi em JSON.'
+        );
+      }
     } catch (error) {
-      showAlert('Erro', 'Ocorreu um erro na comunicação com o servidor.');
-      console.error(error);
+      console.error('Erro ao conectar com o servidor:', error);
+      showAlert(
+        'Erro de Conexão',
+        'Não foi possível conectar ao servidor. Por favor, verifique se o backend está em execução.'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -145,10 +188,14 @@ export default function CadastroScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.botao} onPress={handleCadastro}>
-            <Text style={styles.textoBotao}>
-              {role === 'prestador' ? 'Continuar' : 'Cadastrar'}
-            </Text>
+          <TouchableOpacity style={styles.botao} onPress={handleCadastro} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="black" />
+            ) : (
+              <Text style={styles.textoBotao}>
+                {role === 'prestador' ? 'Continuar' : 'Cadastrar'}
+              </Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.loginText}>
