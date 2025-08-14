@@ -1,3 +1,4 @@
+// clientesRouters.txt
 
 import express from 'express';
 import clientesController from '../controllers/clientesController.js';
@@ -9,8 +10,10 @@ const router = express.Router();
 // A rota de login não deve ser protegida
 router.post('/login', clientesController.loginCliente);
 
-// ** Rota de cadastro agora é '/register' para corresponder à sua requisição **
-router.post('/register', clientesController.createClientes); // Rota para cadastrar novo cliente
+// ** Rota de cadastro corrigida para /register **
+// O seu aplicativo está fazendo POST para /api/register
+// A rota do router precisa ser configurada para '/register'
+router.post('/register', clientesController.createClientes);
 
 // GET - Todos os clientes
 router.get('/', clientesController.getAllClientes);

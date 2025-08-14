@@ -18,6 +18,8 @@ export default function CadastroScreen() {
   const [telefone, setTelefone] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [cep, setCep] = useState('');
+  
   const [showSenha, setShowSenha] = useState(false);
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -46,8 +48,17 @@ export default function CadastroScreen() {
   };
 
   const handleCadastro = async () => {
-    if (!nome || !cpf || !email || !telefone || !senha || !confirmarSenha) {
+    // Validação de campos obrigatórios
+    if (!nome || !cpf || !email || !telefone || !senha || !confirmarSenha || !cep) {
       showAlert('Erro', 'Por favor, preencha todos os campos.');
+      return;
+    }
+
+    // Validação de CPF/CNPJ
+    const cleanedCpf = cpf.replace(/\D/g, ''); // Remove todos os caracteres não numéricos
+    // 🔹 Nova validação para aceitar 11 (CPF) ou 14 (CNPJ) dígitos
+    if (cleanedCpf.length !== 11 && cleanedCpf.length !== 14) {
+      showAlert('Erro', 'O CPF/CNPJ deve conter 11 (CPF) ou 14 (CNPJ) dígitos.');
       return;
     }
 
@@ -76,12 +87,12 @@ export default function CadastroScreen() {
           telefone,
           senha,
           role,
+          cep,
         }),
       });
 
       console.log('Status da resposta:', response.status);
 
-      // Verifique se a resposta é JSON antes de tentar fazer o parse
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.indexOf('application/json') !== -1) {
         const data = await response.json();
@@ -89,8 +100,11 @@ export default function CadastroScreen() {
         if (response.ok) {
           console.log('Cadastro bem-sucedido!', data);
           if (role === 'prestador') {
+            // Ação para prestador
+            showAlert('Sucesso', 'Seu cadastro foi realizado com sucesso! Prossiga para a próxima etapa.');
             router.push('/cadastro_parte2');
           } else {
+            // Ação para cliente
             showAlert('Sucesso', 'Seu cadastro foi realizado com sucesso!');
             router.push('/home');
           }
@@ -141,11 +155,13 @@ export default function CadastroScreen() {
             style={styles.input}
           />
           <TextInput
-            placeholder="CPF"
+            // 🔹 Placeholder atualizado para CNPJ
+            placeholder="CPF ou CNPJ (apenas números)"
             value={cpf}
             onChangeText={setCpf}
             style={styles.input}
             keyboardType="numeric"
+            // 🔹 Removido o maxLength para permitir CNPJ
           />
           <TextInput
             placeholder="E-mail"
@@ -160,6 +176,14 @@ export default function CadastroScreen() {
             onChangeText={setTelefone}
             style={styles.input}
             keyboardType="phone-pad"
+          />
+          <TextInput
+            placeholder="CEP (apenas números)"
+            value={cep}
+            onChangeText={setCep}
+            style={styles.input}
+            keyboardType="numeric"
+            maxLength={8}
           />
 
           <View style={styles.inputSenhaContainer}>
@@ -220,7 +244,7 @@ export default function CadastroScreen() {
         </Text>
       </ScrollView>
 
-       <Modal
+        <Modal
         animationType="fade"
         transparent={true}
         visible={modalVisible}
@@ -260,7 +284,7 @@ const styles = StyleSheet.create({
     height: 200,
     alignSelf: 'center',
     resizeMode: 'contain',
-    marginTop: -50,
+    marginTop: -30,
     marginBottom: -30,
   },
   card: {
@@ -320,7 +344,7 @@ const styles = StyleSheet.create({
   textoBotao: {
     fontWeight: 'bold',
     color: 'black',
-    fontSize: 16,
+    fontSize: 18,
   },
   loginText: {
     textAlign: 'center',

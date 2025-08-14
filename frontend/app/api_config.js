@@ -16,6 +16,6 @@ export const BASE_URL = 'http://10.0.2.2:3000';
 
 // Altere este valor para o IP da máquina que está rodando o backend
 
-const IP_DO_SERVIDOR = 'http://172.30.64.1:3000'; // Substitua pelo seu IP atual
+const IP_DO_SERVIDOR = 'http://192.168.101.95:3000'; // Substitua pelo seu IP atual
 
 export { IP_DO_SERVIDOR };

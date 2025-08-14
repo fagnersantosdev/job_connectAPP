@@ -102,7 +102,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="E-mail"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#8d9096ff"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
@@ -116,7 +116,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Senha"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#8d9096ff"
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -178,11 +178,11 @@ const styles = StyleSheet.create({
     paddingTop: 50,
   },
   logo: {
-    width: 300,
-    height: 200,
+    width: 250,
+    height: 100,
     resizeMode: 'contain',
     marginBottom: 0,
-    marginTop: 20,
+    marginTop: -20,
   },
   title: {
     fontSize: 28,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   registerLinkText: {
-    color: '#06437e',
+    color: '#2563EB',
     fontWeight: 'bold',
   },
 });
