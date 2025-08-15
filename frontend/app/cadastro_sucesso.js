@@ -38,7 +38,7 @@ export default function CadastroSucessoScreen() {
     if (role === 'prestador') {
       router.replace('/home_prestador');
     } else {
-      router.replace('/home_clientes');
+      router.replace('/home_cliente');
     }
   };
 
@@ -56,7 +56,7 @@ export default function CadastroSucessoScreen() {
           Você agora faz parte da comunidade JobConnect.
         </Text>
         <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Prosseguir para a tela inicial</Text>
+          <Text style={styles.buttonText}>Prosseguir</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -71,10 +71,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 150,
+    width: 200,
     height: 150,
     resizeMode: 'contain',
-    marginBottom: 20,
+    marginBottom: 5,
   },
   card: {
     backgroundColor: 'white',
@@ -111,6 +111,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: 'bold',
     color: COLORS.buttonText,
-    fontSize: 16,
+    fontSize: 18,
   },
 });
