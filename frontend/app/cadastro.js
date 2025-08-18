@@ -32,6 +32,7 @@ export default function CadastroScreen() {
   const [confirmarSenhaError, setConfirmarSenhaError] = useState('');
 
   const router = useRouter();
+  // Obtém os parâmetros da rota
   const { role } = useLocalSearchParams();
 
   useEffect(() => {
@@ -143,7 +144,10 @@ export default function CadastroScreen() {
     }
   };
 
-
+  /**
+   * Função para lidar com o cadastro.
+   * Agora com logs para depuração e melhor tratamento de erros.
+   */
   const handleCadastro = async () => {
     const cleanedCpf = cpfCnpj.replace(/\D/g, '');
     const cleanedCep = cep.replace(/\D/g, '');
@@ -175,6 +179,17 @@ export default function CadastroScreen() {
       const serverIp = IP_DO_SERVIDOR || (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
       const apiUrl = `${serverIp}/api/register`;
       
+      console.log('--- Iniciando requisição de cadastro ---');
+      console.log('Payload:', {
+        nome,
+        cpf_cnpj: cleanedCpf,
+        email,
+        telefone: cleanedTelefone,
+        role,
+        cep: cleanedCep,
+      });
+      console.log('Role recebido via useLocalSearchParams:', role);
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -191,18 +206,22 @@ export default function CadastroScreen() {
         }),
       });
 
+      console.log('Status da resposta:', response.status);
+      
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.indexOf('application/json') !== -1) {
         const data = await response.json();
         
         if (response.ok) {
+          console.log('Cadastro bem-sucedido. Role:', role);
           if (role === 'prestador') {
-            router.push('/cadastro_parte2');
+            // Alterado para 'replace' para substituir a tela no histórico de navegação
+            router.replace('/cadastro_parte2');
           } else {
-            // 🔹 Navega para a tela de sucesso e passa o role como parâmetro
             router.replace({ pathname: '/cadastro_sucesso', params: { role } });
           }
         } else {
+          console.log('Erro no servidor:', data.message);
           showAlert('Erro', data.message || 'Ocorreu um erro no cadastro. Tente novamente.');
         }
       } else {
@@ -347,7 +366,7 @@ export default function CadastroScreen() {
         onRequestClose={() => {
           setModalVisible(!modalVisible);
         }}
-      >
+        >
         <View style={styles.modalOverlay}>
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>{modalTitle}</Text>
@@ -360,8 +379,8 @@ export default function CadastroScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </KeyboardAvoidingView>
+        </Modal>
+      </KeyboardAvoidingView>
   );
 }
 

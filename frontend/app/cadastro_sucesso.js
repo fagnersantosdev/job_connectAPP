@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
     height: 150,
     resizeMode: 'contain',
     marginBottom: 5,
+    marginTop:-60,
   },
   card: {
     backgroundColor: 'white',
