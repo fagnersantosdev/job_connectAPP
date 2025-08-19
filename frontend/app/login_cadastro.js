@@ -5,13 +5,17 @@ import {
   ActivityIndicator, Alert, PanResponder
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+// 1. Importar o hook 'useLocalSearchParams' para ler os parâmetros da rota
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config';
 
 const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function LoginScreen() {
   const router = useRouter();
+  // 2. Receber o parâmetro 'role' enviado pela tela anterior
+  const { role } = useLocalSearchParams();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -42,8 +46,12 @@ export default function LoginScreen() {
     };
   }, []);
 
+  // 3. Modificar a função para passar o 'role' adiante
   const trocarDetela = () => {
-    router.push('/cadastro');
+    router.push({
+        pathname: '/cadastro',
+        params: { role: role } // Passa o 'role' para a tela de cadastro
+    });
   };
 
   const handleLogin = async () => {
@@ -60,6 +68,9 @@ export default function LoginScreen() {
       });
 
       if (response.ok) {
+        // AQUI: Você pode querer adicionar uma lógica para redirecionar
+        // o usuário logado com base no 'role' dele também.
+        // Por enquanto, mantém o redirecionamento padrão.
         router.push('/home_cliente');
       } else {
         const errorData = await response.json();

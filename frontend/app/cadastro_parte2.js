@@ -11,7 +11,7 @@ const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function CadastroPrestador() {
   const [areaAtuacao, setAreaAtuacao] = useState('');
-  const [cep, setCep] = useState('');
+  // const [cep, setCep] = useState('');
   const [descricao, setDescricao] = useState('');
   const [foto, setFoto] = useState(null);
   // Novo estado para o modal
@@ -43,20 +43,20 @@ export default function CadastroPrestador() {
 
   const handleCadastro = async () => {
     // Validação de campos
-    if (!areaAtuacao || !cep || !descricao) {
+    if (!areaAtuacao || !descricao) {
         showAlert('Erro', 'Por favor, preencha todos os campos.');
         return;
     }
     
     // Validação de CEP
-    if (cep.length !== 8) {
-      showAlert('Erro', 'O CEP deve ter 8 dígitos.');
-      return;
-    }
+    // if (cep.length !== 8) {
+    //   showAlert('Erro', 'O CEP deve ter 8 dígitos.');
+    //   return;
+    // }
 
     // Simulação de chamada de API para enviar dados do prestador
     try {
-        console.log({ areaAtuacao, cep, descricao, foto });
+        console.log({ areaAtuacao, descricao, foto });
         showAlert('Sucesso', 'Cadastro do prestador concluído com sucesso!');
         setTimeout(() => {
             setModalVisible(false);
@@ -87,14 +87,14 @@ export default function CadastroPrestador() {
           value={areaAtuacao}
           onChangeText={setAreaAtuacao}
         />
-        <TextInput
+        {/* <TextInput
           style={styles.input}
           placeholder="Cep"
           value={cep}
           onChangeText={setCep}
           keyboardType="numeric"
           maxLength={8}
-        />
+        /> */}
         <TextInput
           style={[styles.input, { height: 80 }]}
           placeholder="Descrição do Serviço"
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     height: 200,
     alignSelf: 'center',
     resizeMode: 'contain',
-    marginTop: 0,
+    marginTop: 10,
     marginBottom: -15,
   },
   card: {
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   botaoTexto: {
     fontWeight: 'bold',
     color: '#000',
-    fontSize: 16,
+    fontSize: 17,
   },
   termos: {
     fontSize: 12,
