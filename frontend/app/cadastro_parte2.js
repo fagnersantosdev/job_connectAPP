@@ -60,7 +60,7 @@ export default function CadastroPrestador() {
         showAlert('Sucesso', 'Cadastro do prestador concluído com sucesso!');
         setTimeout(() => {
             setModalVisible(false);
-            router.push('/home'); // Redireciona para a home
+            router.push('/home_prestador'); // Redireciona para a home
         }, 2000);
     } catch (error) {
         showAlert('Erro', 'Ocorreu um erro ao finalizar o cadastro.');
@@ -127,7 +127,9 @@ export default function CadastroPrestador() {
           </Text>
         </Text>
         <Text style={styles.termos}>
-          Ao cadastrar, você concorda com nossos Termos de Serviço e Política de Privacidade
+          Ao continuar, você concorda com nossos{' '}
+            <Text style={styles.link}>Termos de Serviço</Text> e{' '}
+            <Text style={styles.link}>Política de Privacidade</Text>
         </Text>
       </View>
       <Text style={styles.footer}>
@@ -182,7 +184,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: '#1D4ED8',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
@@ -191,11 +193,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginTop: 5,
+    color: '#1D4ED8',
   },
   subtitulo: {
     fontSize: 14,
-    color: '#555',
     marginBottom: 20,
+    color: '#1D4ED8',
   },
   input: {
     width: '90%',
@@ -236,11 +239,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   termos: {
-    fontSize: 12,
-    color: '#555',
     textAlign: 'center',
-    marginBottom: 10,
-    marginTop: 10
+    fontSize: 13,
+    color: '#555',
+    marginTop: 15,
+  },
+  link: {
+    color: '#2563EB',
   },
   footer: {
     fontSize: 13,

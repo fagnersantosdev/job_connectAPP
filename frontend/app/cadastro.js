@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#1D4ED8',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   subtitulo: {
     textAlign: 'center',
