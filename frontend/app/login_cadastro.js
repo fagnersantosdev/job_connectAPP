@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react'; // 1. Importar useContext
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard,
   ActivityIndicator, Alert, PanResponder
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// 1. Importar o hook 'useLocalSearchParams' para ler os parâmetros da rota
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IP_DO_SERVIDOR } from '../app/api_config';
+import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho do import está correto
+import { AuthContext } from '../app/AuthContext'; // 2. Importar o AuthContext
 
 const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function LoginScreen() {
   const router = useRouter();
-  // 2. Receber o parâmetro 'role' enviado pela tela anterior
   const { role } = useLocalSearchParams();
+  const { login } = useContext(AuthContext); // 3. Obter a função de login do contexto
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,15 +22,13 @@ export default function LoginScreen() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // PanResponder para detectar arrastar para esquerda
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20; // Só ativa se houver movimento horizontal
+        return Math.abs(gestureState.dx) > 20;
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -50) { 
-          // arrastou para esquerda mais de 50px
           router.push('/home_cliente');
         }
       },
@@ -46,11 +44,10 @@ export default function LoginScreen() {
     };
   }, []);
 
-  // 3. Modificar a função para passar o 'role' adiante
   const trocarDetela = () => {
     router.push({
         pathname: '/cadastro',
-        params: { role: role } // Passa o 'role' para a tela de cadastro
+        params: { role: role }
     });
   };
 
@@ -61,22 +58,30 @@ export default function LoginScreen() {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(`${IP_DO_SERVIDOR}/api/login`, {
+      // A sua API de login deve retornar os dados do usuário logado
+      const response = await fetch(`${IP_DO_SERVIDOR}/login`, { // Rota de login principal
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }), // Enviando o role para o backend
       });
 
+      const userData = await response.json();
+
       if (response.ok) {
-        // AQUI: Você pode querer adicionar uma lógica para redirecionar
-        // o usuário logado com base no 'role' dele também.
-        // Por enquanto, mantém o redirecionamento padrão.
-        router.push('/home_cliente');
+        // 4. Sucesso! Salve os dados do usuário no contexto global
+        login(userData.user); // Assumindo que a API retorna { user: {...}, token: '...' }
+
+        // 5. Redirecione com base no 'role' do usuário retornado pela API
+        if (userData.user.role === 'prestador') {
+            router.push('/home_prestador');
+        } else {
+            router.push('/home_cliente');
+        }
       } else {
-        const errorData = await response.json();
-        Alert.alert('Erro no Login', errorData.message || 'E-mail ou senha incorretos.');
+        Alert.alert('Erro no Login', userData.message || 'E-mail ou senha incorretos.');
       }
     } catch (e) {
+      console.error(e); // Adicionado para depuração
       Alert.alert('Erro de Conexão', 'Não foi possível conectar ao servidor.');
     } finally {
       setIsLoading(false);
@@ -90,7 +95,7 @@ export default function LoginScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
     >
       <ScrollView
-        {...panResponder.panHandlers} // Adiciona o detector de gesto
+        {...panResponder.panHandlers}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >

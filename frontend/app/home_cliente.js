@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,26 +10,14 @@ import {
   FlatList,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { AuthContext } from '../app/AuthContext'; // 1. Importar o AuthContext
+import { IP_DO_SERVIDOR } from '../app/api_config'; // Importar a URL da API
 
 const logo = require('../assets/images/logo-Jobconnect.png');
-
-const serviceCategories = [
-  { id: '1', name: 'Pedreiro', icon: 'hammer-outline' },
-  { id: '2', name: 'Encanamento', icon: 'water-outline' },
-  { id: '3', name: 'Limpeza', icon: 'basket-outline' },
-  { id: '4', name: 'Elétrica', icon: 'flash-outline' },
-  { id: '5', name: 'Mais Serviços...', icon: 'ellipsis-horizontal-circle-outline' },
-];
-
-const featuredProfessionals = [
-  { id: '1', name: 'Carlos Silva', job: 'Eletricista', rating: 4.8, distance: '3km', image: 'https://placehold.co/100x100/png?text=CS' },
-  { id: '2', name: 'Ana Ferreira', job: 'Faxineira', rating: 4.5, distance: '5km', image: 'https://placehold.co/100x100/png?text=AF' },
-  { id: '3', name: 'Robson Souza', job: 'Pintor', rating: 4.7, distance: '4km', image: 'https://placehold.co/100x100/png?text=RS' },
-  { id: '4', name: 'Cristiano Martins', job: 'Encanador', rating: 4.6, distance: '1km', image: 'https://placehold.co/100x100/png?text=CM' },
-];
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -44,12 +32,12 @@ const CategoryItem = ({ item }) => (
 
 const ProfessionalCard = ({ professional }) => (
   <View style={styles.professionalCard}>
-    <Image source={{ uri: professional.image }} style={styles.professionalImage} />
+    <Image source={{ uri: professional.image || 'https://placehold.co/100x100/png?text=User' }} style={styles.professionalImage} />
     <View style={styles.professionalInfo}>
       <Text style={styles.professionalName}>{professional.name}</Text>
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={16} color="#FFD233" />
-        <Text style={styles.ratingText}>{professional.rating}</Text>
+        <Text style={styles.ratingText}>{professional.rating || 'N/A'}</Text>
       </View>
       <Text style={styles.professionalJob}>{professional.job}</Text>
       <Text style={styles.professionalDistance}>{professional.distance} de distância</Text>
@@ -58,40 +46,77 @@ const ProfessionalCard = ({ professional }) => (
 );
 
 export default function HomeCliente() {
+  const { user, logout } = useContext(AuthContext); // 2. Obter dados e funções do contexto
   const [searchQuery, setSearchQuery] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [professionals, setProfessionals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.6)).current;
   const router = useRouter();
 
-  // Animação do menu lateral
+  useEffect(() => {
+    // Busca os dados da API quando o componente é montado
+    const fetchData = async () => {
+        try {
+            // Busca categorias de serviços
+            const catResponse = await fetch(`${IP_DO_SERVIDOR}/categorias`);
+            const catData = await catResponse.json();
+            setCategories([...catData, { id: 'mais', name: 'Mais Serviços...', icon: 'ellipsis-horizontal-circle-outline' }]);
+
+            // Busca profissionais em destaque
+            const profResponse = await fetch(`${IP_DO_SERVIDOR}/prestadores?destaque=true`); // Exemplo de endpoint
+            const profData = await profResponse.json();
+            setProfessionals(profData);
+        } catch (error) {
+            console.error("Erro ao buscar dados da API:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchData();
+  }, []);
+
   useEffect(() => {
     Animated.timing(slideAnim, {
       toValue: menuVisible ? 0 : -SCREEN_WIDTH * 0.6,
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [menuVisible]);
+  }, [menuVisible, slideAnim]); // CORREÇÃO: Adicionada a dependência 'slideAnim'
+
+  const handleLogout = () => {
+    logout(); // Limpa os dados do usuário do contexto
+    router.replace('/'); // Redireciona para a tela inicial (use 'replace' para não poder voltar)
+  };
+
+  // Mostra um indicador de carregamento enquanto os dados do usuário não estão disponíveis
+  if (!user) {
+    return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#A4CAED' }}>
+            <ActivityIndicator size="large" color="#06437e" />
+        </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       {/* Menu Lateral */}
       <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
         <Text style={styles.menuTitle}>Menu</Text>
-
         <TouchableOpacity onPress={() => { router.push('/profile'); setMenuVisible(false); }}>
           <Text style={styles.menuItem}>Perfil</Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => { router.push('/configuracoes'); setMenuVisible(false); }}>
           <Text style={styles.menuItem}>Configurações</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setMenuVisible(false)}>
+        {/* 3. Botão de Sair agora funciona */}
+        <TouchableOpacity onPress={handleLogout}>
           <Text style={[styles.menuItem, { color: 'red' }]}>Sair</Text>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Overlay */}
       {menuVisible && (
         <TouchableOpacity
           style={styles.overlay}
@@ -105,18 +130,23 @@ export default function HomeCliente() {
         <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(true)}>
           <Ionicons name="menu-outline" size={32} color="#06437e" />
         </TouchableOpacity>
-
         <View style={styles.logoContainer}>
           <Image source={logo} style={styles.logo} resizeMode="contain" />
         </View>
-
-        <TouchableOpacity style={styles.profileIconContainer}>
-          <Ionicons name="person-circle-outline" size={40} color="#06437e" />
+        <TouchableOpacity style={styles.profileIconContainer} onPress={() => router.push('/profile')}>
+            {/* Exibe a imagem do usuário se disponível */}
+            {user.imagem ? (
+                <Image source={{ uri: user.imagem }} style={styles.headerProfileImage} />
+            ) : (
+                <Ionicons name="person-circle-outline" size={40} color="#06437e" />
+            )}
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Barra de pesquisa */}
+        {/* 4. Mensagem de boas-vindas dinâmica */}
+        <Text style={styles.welcomeText}>Olá, {user.nome}!</Text>
+        
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={24} color="#555" style={styles.searchIcon} />
           <TextInput
@@ -128,32 +158,34 @@ export default function HomeCliente() {
           />
         </View>
 
-        {/* Categorias */}
-        <Text style={styles.sectionTitle}>Serviços</Text>
-        <FlatList
-          data={serviceCategories}
-          renderItem={({ item }) => <CategoryItem item={item} />}
-          keyExtractor={item => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesList}
-        />
+        {loading ? <ActivityIndicator color="#06437e" /> : (
+            <>
+                <Text style={styles.sectionTitle}>Serviços</Text>
+                <FlatList
+                  data={categories}
+                  renderItem={({ item }) => <CategoryItem item={item} />}
+                  keyExtractor={item => item.id.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoriesList}
+                />
 
-        {/* Profissionais */}
-        <View style={styles.featuredProfessionalsContainer}>
-          <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
-          <TouchableOpacity onPress={() => router.push('/services')}>
-            <Text style={styles.seeAllText}>Mais Serviços...</Text>
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={featuredProfessionals}
-          renderItem={({ item }) => <ProfessionalCard professional={item} />}
-          keyExtractor={item => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.professionalsList}
-        />
+                <View style={styles.featuredProfessionalsContainer}>
+                  <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
+                  <TouchableOpacity onPress={() => router.push('/services')}>
+                    <Text style={styles.seeAllText}>Mais Serviços...</Text>
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={professionals}
+                  renderItem={({ item }) => <ProfessionalCard professional={item} />}
+                  keyExtractor={item => item.id.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.professionalsList}
+                />
+            </>
+        )}
       </ScrollView>
     </View>
   );
@@ -163,6 +195,7 @@ const styles = StyleSheet.create({
   // Layout principal
   container: { flex: 1, backgroundColor: 'transparent', paddingTop: 50 },
   scrollView: { paddingHorizontal: 20 },
+  welcomeText: { fontSize: 22, fontWeight: '600', color: '#06437e', marginBottom: 15 },
 
   // Cabeçalho
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, marginBottom: 10 },
@@ -170,6 +203,7 @@ const styles = StyleSheet.create({
   logoContainer: { flex: 1, alignItems: 'center' },
   logo: { width: 120, height: 60 },
   profileIconContainer: { marginLeft: 'auto' },
+  headerProfileImage: { width: 40, height: 40, borderRadius: 20 },
 
   // Barra de pesquisa
   searchBar: {
@@ -243,4 +277,3 @@ const styles = StyleSheet.create({
   menuTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 15 , marginTop: 20 },
   menuItem: { fontSize: 16, marginBottom: 15 },
 });
-

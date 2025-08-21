@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import { 
     View, 
     Text, 
@@ -10,35 +9,26 @@ import {
     Switch,
     ActivityIndicator
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+// 1. Importar a configuração da API
+import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
 
-// --- SIMULAÇÃO DO BANCO DE DADOS ---
-
-// 1. Dados do Prestador Logado (viria do seu contexto de autenticação ou API)
+// --- DADOS DO PRESTADOR LOGADO (viria do seu contexto de autenticação) ---
 const prestadorLogado = {
     id: 101,
     nome: 'Robson',
     imagem: 'https://placehold.co/100x100/EFEFEF/333?text=R',
-    areaAtuacao: 'Elétrica', // A especialidade do prestador
-    cep: '27323-000', // CEP do prestador para cálculo de distância
+    areaAtuacao: 'Elétrica',
+    cep: '27323-000',
 };
 
-// 2. Lista de todas as solicitações de serviços no "banco de dados"
-const todasAsSolicitacoes = [
-    { id: 1, cliente: { nome: 'Ana Ferreira', imagem: 'https://placehold.co/100x100/EFEFEF/555?text=A', cep: '27330-580' }, servico: 'Instalação de Tomada', area: 'Elétrica' },
-    { id: 2, cliente: { nome: 'Carlos Souza', imagem: 'https://placehold.co/100x100/EFEFEF/555?text=C', cep: '27320-110' }, servico: 'Reparo em Disjuntor', area: 'Elétrica' },
-    { id: 3, cliente: { nome: 'Julia Santos', imagem: 'https://placehold.co/100x100/EFEFEF/555?text=J', cep: '27335-400' }, servico: 'Conserto de vazamento', area: 'Encanamento' },
-    { id: 4, cliente: { nome: 'Doutor Roger', imagem: 'https://placehold.co/100x100/EFEFEF/555?text=R', cep: '27331-020' }, servico: 'Troca de fiação', area: 'Elétrica' },
-    { id: 5, cliente: { nome: 'Mariana Lima', imagem: 'https://placehold.co/100x100/EFEFEF/555?text=M', cep: '27350-330' }, servico: 'Pintura de parede', area: 'Pintura' },
-];
-
-// 3. Função para simular o cálculo de distância (em um app real, usaria uma API de geolocalização)
+// --- FUNÇÃO DE CÁLCULO DE DISTÂNCIA (Temporária) ---
+// O ideal é que o backend já calcule e envie a distância.
+// Por enquanto, mantemos a simulação no frontend.
 const calcularDistanciaSimulada = (cep1, cep2) => {
-    // Lógica de simulação: retorna um valor aleatório para demonstração
     const randomKm = Math.floor(Math.random() * 15) + 1;
     return { km: randomKm, texto: `Aprox. ${randomKm}km de distância` };
 };
-
-// --- FIM DA SIMULAÇÃO ---
 
 
 export default function HomePrestadorScreen() {
@@ -56,32 +46,32 @@ export default function HomePrestadorScreen() {
         };
         setGreeting(getGreeting());
 
-        // Função para buscar e processar os dados
         const fetchSolicitacoes = async () => {
             setLoading(true);
             try {
-                // Passo 1: Filtrar solicitações pela área de atuação do prestador
-                const solicitacoesFiltradas = todasAsSolicitacoes.filter(
-                    sol => sol.area === prestadorLogado.areaAtuacao
-                );
+                // --- CONEXÃO COM SEU BACKEND ---
+                // 2. Usar a variável importada para construir a URL
+                const API_URL = `${IP_DO_SERVIDOR}/solicitacoes?area=${prestadorLogado.areaAtuacao}`;
+                
+                const response = await fetch(API_URL);
+                const data = await response.json();
 
-                // Passo 2: Calcular a distância para cada solicitação filtrada
-                const solicitacoesComDistancia = solicitacoesFiltradas.map(sol => {
+                // OBS: O código abaixo assume que sua API retorna um array de objetos
+                // e que cada objeto tem um objeto 'cliente' aninhado.
+                // Se a estrutura for diferente (ex: cliente_nome), ajuste o mapeamento abaixo.
+                const solicitacoesComDistancia = data.map(sol => {
                     const distancia = calcularDistanciaSimulada(prestadorLogado.cep, sol.cliente.cep);
-                    return { ...sol, distancia }; // Adiciona a distância ao objeto
+                    return { ...sol, distancia };
                 });
 
-                // Passo 3: Ordenar as solicitações pela distância (mais próxima primeiro)
                 solicitacoesComDistancia.sort((a, b) => a.distancia.km - b.distancia.km);
 
-                // Simula um atraso de rede
-                setTimeout(() => {
-                    setSolicitacoes(solicitacoesComDistancia);
-                    setLoading(false);
-                }, 1500);
+                setSolicitacoes(solicitacoesComDistancia);
 
             } catch (error) {
-                console.error("Erro ao buscar solicitações:", error);
+                console.error("Erro ao buscar solicitações da API:", error);
+                // Adicionar feedback de erro para o usuário seria uma boa prática
+            } finally {
                 setLoading(false);
             }
         };
