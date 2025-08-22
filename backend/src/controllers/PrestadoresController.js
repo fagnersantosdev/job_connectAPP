@@ -3,6 +3,7 @@ import { isEmail } from "../shared/util.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import pool from '../config/database.js'; // Seu pool de conexão com o DB
 
 dotenv.config();
 const saltRounds = 10;
@@ -387,54 +388,53 @@ const prestadoresController = {
         }
     },
 
-    /**
-     * @description Busca prestadores por proximidade e filtros de serviço.
-     * Esta rota é pública.
-     * @param {Object} req - Objeto de requisição (query: { lat, lon, radius, categoria_id, titulo }).
-     * @param {Object} res - Objeto de resposta.
-     */
-    getNearbyPrestadores: async (req, res) => {
-        const { lat, lon, radius, categoria_id, titulo } = req.query;
+findProximos: async (req, res) => {
+        const { categoria, clienteId } = req.query;
 
-        const erros = [];
-        if (lat === undefined || isNaN(parseFloat(lat)) || parseFloat(lat) < -90 || parseFloat(lat) > 90) {
-            erros.push("Latitude é obrigatória e deve ser um número entre -90 e 90.");
-        }
-        if (lon === undefined || isNaN(parseFloat(lon)) || parseFloat(lon) < -180 || parseFloat(lon) > 180) {
-            erros.push("Longitude é obrigatória e deve ser um número entre -180 e 180.");
-        }
-        if (radius === undefined || isNaN(parseFloat(radius)) || parseFloat(radius) <= 0) {
-            erros.push("Raio é obrigatório e deve ser um número positivo.");
-        }
-        if (categoria_id !== undefined && isNaN(parseInt(categoria_id))) {
-            erros.push("ID da categoria deve ser um número válido.");
-        }
-        // Não há validação de comprimento para 'titulo' aqui, apenas presença se fornecido.
-
-        if (erros.length > 0) {
-            return res.status(400).json({ status: 400, ok: false, message: erros });
-        }
-
-        const filtros = {
-            lat: parseFloat(lat),
-            lon: parseFloat(lon),
-            radius: parseFloat(radius)
-        };
-        if (categoria_id) {
-            filtros.categoria_id = parseInt(categoria_id);
-        }
-        if (titulo) {
-            filtros.titulo = titulo;
+        if (!categoria || !clienteId) {
+            return res.status(400).json({ message: 'Categoria e ID do cliente são obrigatórios.' });
         }
 
         try {
-            const result = await prestadoresRepository.getNearbyPrestadores(filtros);
-            res.status(result.status).json(result);
+            // 1. Buscar as coordenadas do cliente
+            const clienteResult = await pool.query('SELECT latitude, longitude FROM clientes WHERE id = $1', [clienteId]);
+            if (clienteResult.rows.length === 0) {
+                return res.status(404).json({ message: 'Cliente não encontrado.' });
+            }
+            const { latitude: clienteLat, longitude: clienteLon } = clienteResult.rows[0];
+
+            // 2. Query SQL com a Fórmula de Haversine para calcular a distância em KM
+            // Esta query encontra prestadores da categoria desejada e os ordena pela distância
+            const query = `
+                SELECT 
+                    id, 
+                    nome, 
+                    imagem,
+                    -- Adicione outros campos do prestador que você precisar
+                    (
+                        6371 * acos(
+                            cos(radians($1)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2)) + 
+                            sin(radians($1)) * sin(radians(latitude))
+                        )
+                    ) AS distancia_km
+                FROM 
+                    prestadores
+                WHERE 
+                    area_atuacao = $3 -- Supondo que a coluna se chame 'area_atuacao'
+                ORDER BY 
+                    distancia_km
+                LIMIT 10; -- Limita aos 10 mais próximos
+            `;
+
+            const prestadoresResult = await pool.query(query, [clienteLat, clienteLon, categoria]);
+
+            res.json(prestadoresResult.rows);
+
         } catch (error) {
-            console.error("Erro no controller ao buscar prestadores por proximidade:", error);
-            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor ao buscar prestadores por proximidade." });
+            console.error('Erro ao buscar prestadores próximos:', error);
+            res.status(500).json({ message: 'Erro interno do servidor.' });
         }
-    }
+    },
 };
 
 export default prestadoresController;

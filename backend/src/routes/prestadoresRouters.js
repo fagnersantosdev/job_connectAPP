@@ -12,9 +12,7 @@ router.get('/id/:id', PrestadoresController.getPrestadores);
 router.get('/nome/:nome', PrestadoresController.getPrestadoresByName);
 router.get('/foto/:id', PrestadoresController.getFotoById);
 
-// NOVO: GET /prestadores/nearby - Buscar prestadores por proximidade e filtros de serviço
-router.get('/nearby', PrestadoresController.getNearbyPrestadores);
-
+router.get('/proximos', PrestadoresController.findProximos);
 
 // --- Rotas Protegidas de Prestadores (exigem JWT) ---
 
