@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from 'react'; // 1. Importar useContext
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, KeyboardAvoidingView, ScrollView, Platform, Keyboard,
@@ -6,15 +6,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho do import está correto
-import { AuthContext } from '../app/AuthContext'; // 2. Importar o AuthContext
+import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
+import { AuthContext } from '../app/AuthContext';
 
 const logo = require('../assets/images/logo-Jobconnect.png');
 
 export default function LoginScreen() {
   const router = useRouter();
   const { role } = useLocalSearchParams();
-  const { login } = useContext(AuthContext); // 3. Obter a função de login do contexto
+  const { login } = useContext(AuthContext);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,9 +24,7 @@ export default function LoginScreen() {
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 20;
-      },
+      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 20,
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -50) { 
           router.push('/home_cliente');
@@ -46,8 +44,8 @@ export default function LoginScreen() {
 
   const trocarDetela = () => {
     router.push({
-        pathname: '/cadastro',
-        params: { role: role }
+      pathname: '/cadastro',
+      params: { role: role }
     });
   };
 
@@ -56,32 +54,39 @@ export default function LoginScreen() {
       Alert.alert('Erro no Login', 'Por favor, preencha todos os campos.');
       return;
     }
+
+    // -------------------- LOGIN ADMIN --------------------
+    if (email === 'admin' && password === 'admin') {
+      login({ nome: 'Administrador', role: 'admin', email: 'admin' });
+      router.push('/admin_tela'); // ou qualquer rota inicial
+      return;
+    }
+    // -----------------------------------------------------
+
     setIsLoading(true);
+
     try {
-      // A sua API de login deve retornar os dados do usuário logado
-      const response = await fetch(`${IP_DO_SERVIDOR}/login`, { // Rota de login principal
+      const response = await fetch(`${IP_DO_SERVIDOR}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role }), // Enviando o role para o backend
+        body: JSON.stringify({ email, password, role }),
       });
 
       const userData = await response.json();
 
       if (response.ok) {
-        // 4. Sucesso! Salve os dados do usuário no contexto global
-        login(userData.user); // Assumindo que a API retorna { user: {...}, token: '...' }
+        login(userData.user);
 
-        // 5. Redirecione com base no 'role' do usuário retornado pela API
         if (userData.user.role === 'prestador') {
-            router.push('/home_prestador');
+          router.push('/home_prestador');
         } else {
-            router.push('/home_cliente');
+          router.push('/home_cliente');
         }
       } else {
         Alert.alert('Erro no Login', userData.message || 'E-mail ou senha incorretos.');
       }
     } catch (e) {
-      console.error(e); // Adicionado para depuração
+      console.error(e);
       Alert.alert('Erro de Conexão', 'Não foi possível conectar ao servidor.');
     } finally {
       setIsLoading(false);
@@ -142,11 +147,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
-              {isLoading ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.loginButtonText}>Entrar</Text>
-              )}
+              {isLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.loginButtonText}>Entrar</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={trocarDetela} style={styles.registerLink}>
@@ -162,7 +163,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Estrutura geral
+  // Containers principais
   keyboardAvoiding: {
     flex: 1,
   },
@@ -232,13 +233,15 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
 
-  // Botões e links
+  // Textos de ação
   forgotPasswordText: {
     fontSize: 14,
     color: '#2563EB',
     textAlign: 'right',
     marginBottom: 20,
   },
+
+  // Botões
   loginButton: {
     backgroundColor: '#FACC15',
     borderRadius: 8,
@@ -251,6 +254,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
+
+  // Links de registro
   registerLink: {
     alignItems: 'center',
     marginTop: 10,
