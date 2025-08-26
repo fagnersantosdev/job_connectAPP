@@ -1,12 +1,11 @@
 import prestadoresRepository from "../repositories/prestadoresRepository.js";
 import { isEmail } from "../shared/util.js";
-import bcrypt from 'bcrypt';
+// import bcrypt from 'bcrypt'; // Removido
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import pool from '../config/database.js'; // Seu pool de conexão com o DB
+// import pool from '../config/database.js'; // <-- REMOVIDO: Esta linha causava o erro.
 
 dotenv.config();
-const saltRounds = 10;
 
 const prestadoresController = {
     // --- Obter Prestador por ID ---
@@ -55,6 +54,7 @@ const prestadoresController = {
             });
         }
     },
+
 
     // --- Criar Novo Prestador ---
     createPrestadores: async (req, res) => {
@@ -105,13 +105,13 @@ const prestadoresController = {
         }
 
         try {
-            const hashedPassword = await bcrypt.hash(senha, saltRounds);
+            //const hashedPassword = await bcrypt.hash(senha, saltRounds);
 
             const novo = {
                 nome: nome,
                 cpf_cnpj: cpf_cnpj,
                 email: email,
-                senha: hashedPassword,
+                senha: senha,
                 cep: cep,
                 complemento: complemento,
                 numero: numero,
@@ -200,18 +200,7 @@ const prestadoresController = {
             if (longitude !== undefined) updatedData.longitude = parseFloat(longitude); // Converte para float
 
             if (senha) {
-                updatedData.senha = await bcrypt.hash(senha, saltRounds);
-            } else {
-                const currentPrestadorResult = await prestadoresRepository.getById(id);
-                if (currentPrestadorResult.ok && currentPrestadorResult.data) {
-                    updatedData.senha = currentPrestadorResult.data.senha;
-                } else {
-                    return res.status(404).json({
-                        status: 404,
-                        ok: false,
-                        message: "Prestador não encontrado para atualização ou senha atual não disponível."
-                    });
-                }
+                updatedData.senha = senha;
             }
 
             const result = await prestadoresRepository.update(id, updatedData);
@@ -245,28 +234,15 @@ const prestadoresController = {
         const { email, senha } = req.body;
 
         if (!email || !senha) {
-            return res.status(400).json({
-                status: 400,
-                ok: false,
-                message: "Email e senha são obrigatórios."
-            });
+            return res.status(400).json({ status: 400, ok: false, message: "Email e senha são obrigatórios." });
         }
 
         try {
-            const userResult = await prestadoresRepository.getByEmailForLogin(email);
+            const userResult = await prestadoresRepository.getByEmailForLogin(email, senha);
 
-            if (!userResult.ok || !userResult.data) {
-                return res.status(401).json({
-                    status: 401,
-                    ok: false,
-                    message: "Email ou senha inválidos."
-                });
-            }
-
-            const prestadorNoBanco = userResult.data;
-            const isPasswordValid = await bcrypt.compare(senha, prestadorNoBanco.senha);
-
-            if (isPasswordValid) {
+            if (userResult.ok && userResult.data) {
+                const prestadorNoBanco = userResult.data;
+                
                 const payload = {
                     id: prestadorNoBanco.id,
                     email: email,
@@ -277,31 +253,15 @@ const prestadoresController = {
                     expiresIn: process.env.JWT_EXPIRES_IN
                 });
 
-                const fullPrestadorResult = await prestadoresRepository.getById(prestadorNoBanco.id);
-                if (fullPrestadorResult.ok) {
-                    res.status(200).json({
-                        status: 200,
-                        ok: true,
-                        message: "Login bem-sucedido!",
-                        data: {
-                            prestador: {
-                                id: fullPrestadorResult.data.id,
-                                nome: fullPrestadorResult.data.nome,
-                                email: fullPrestadorResult.data.email,
-                                status_disponibilidade: fullPrestadorResult.data.status_disponibilidade,
-                                latitude: fullPrestadorResult.data.latitude, // Incluído no retorno do login
-                                longitude: fullPrestadorResult.data.longitude // Incluído no retorno do login
-                            },
-                            token: token
-                        }
-                    });
-                } else {
-                    res.status(500).json({
-                        status: 500,
-                        ok: false,
-                        message: "Erro ao recuperar dados completos do prestador após login."
-                    });
-                }
+                res.status(200).json({
+                    status: 200,
+                    ok: true,
+                    message: "Login bem-sucedido!",
+                    data: {
+                        prestador: prestadorNoBanco,
+                        token: token
+                    }
+                });
             } else {
                 res.status(401).json({
                     status: 401,
@@ -311,11 +271,7 @@ const prestadoresController = {
             }
         } catch (error) {
             console.error("Erro no processo de login do prestador:", error);
-            res.status(500).json({
-                status: 500,
-                ok: false,
-                message: "Erro interno do servidor durante o login do prestador."
-            });
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor." });
         }
     },
 
@@ -388,7 +344,7 @@ const prestadoresController = {
         }
     },
 
-findProximos: async (req, res) => {
+    findProximos: async (req, res) => {
         const { categoria, clienteId } = req.query;
 
         if (!categoria || !clienteId) {
@@ -396,45 +352,18 @@ findProximos: async (req, res) => {
         }
 
         try {
-            // 1. Buscar as coordenadas do cliente
-            const clienteResult = await pool.query('SELECT latitude, longitude FROM clientes WHERE id = $1', [clienteId]);
-            if (clienteResult.rows.length === 0) {
-                return res.status(404).json({ message: 'Cliente não encontrado.' });
+            // A lógica agora chama o repositório, que é o correto
+            const result = await prestadoresRepository.findProximos(categoria, clienteId);
+            
+            if (result.ok) {
+                res.status(result.status).json(result.data);
+            } else {
+                res.status(result.status).json({ message: result.message });
             }
-            const { latitude: clienteLat, longitude: clienteLon } = clienteResult.rows[0];
-
-            // 2. Query SQL com a Fórmula de Haversine para calcular a distância em KM
-            // Esta query encontra prestadores da categoria desejada e os ordena pela distância
-            const query = `
-                SELECT 
-                    id, 
-                    nome, 
-                    imagem,
-                    -- Adicione outros campos do prestador que você precisar
-                    (
-                        6371 * acos(
-                            cos(radians($1)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2)) + 
-                            sin(radians($1)) * sin(radians(latitude))
-                        )
-                    ) AS distancia_km
-                FROM 
-                    prestadores
-                WHERE 
-                    area_atuacao = $3 -- Supondo que a coluna se chame 'area_atuacao'
-                ORDER BY 
-                    distancia_km
-                LIMIT 10; -- Limita aos 10 mais próximos
-            `;
-
-            const prestadoresResult = await pool.query(query, [clienteLat, clienteLon, categoria]);
-
-            res.json(prestadoresResult.rows);
-
         } catch (error) {
             console.error('Erro ao buscar prestadores próximos:', error);
             res.status(500).json({ message: 'Erro interno do servidor.' });
         }
     },
 };
-
 export default prestadoresController;
