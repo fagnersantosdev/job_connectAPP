@@ -79,23 +79,26 @@ const clientesRepository = {
         }
     },
 
-    // --- Obter Cliente por Email para Login (apenas ID e Senha) ---
-    getByEmailForLogin: async (email) => {
-        const sql = `SELECT id, senha FROM clientes WHERE email=$1;`;
+    // --- Obter Cliente por Email para Login (com verificação de senha) ---
+    getByEmailForLogin: async (email, plainPassword) => {
+        // A query agora compara o email E a senha.
+        // A função crypt(senha_enviada, senha_no_banco) retorna a senha do banco se elas baterem.
+        // Se a senha estiver errada, a condição não é satisfeita e a query não retorna nada.
+        const sql = `SELECT id, nome, email, latitude, longitude FROM clientes WHERE email = $1 AND senha = crypt($2, senha)`;
         try {
-            const cliente = await conexao.oneOrNone(sql, [email]);
+            const cliente = await conexao.oneOrNone(sql, [email, plainPassword]);
             if (cliente) {
                 return {
                     status: 200,
                     ok: true,
-                    message: 'Credenciais de login obtidas com sucesso',
+                    message: 'Cliente validado com sucesso',
                     data: cliente
                 };
             } else {
                 return {
                     status: 404,
                     ok: false,
-                    message: 'Cliente não encontrado pelo email',
+                    message: 'Cliente não encontrado ou senha inválida',
                     data: null
                 };
             }
@@ -114,7 +117,7 @@ const clientesRepository = {
     create: async (obj) => {
         // Incluído 'latitude' e 'longitude' no INSERT
         const sql = `INSERT INTO clientes (nome, cpf_cnpj, email, senha, telefone, cep, complemento, numero, foto, latitude, longitude)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
 
         try {
             const newCliente = await conexao.one(sql, [

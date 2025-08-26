@@ -1,11 +1,11 @@
 import clientesRepository from "../repositories/clientesRepository.js";
 import { isEmail } from "../shared/util.js";
-import bcrypt from 'bcrypt';
+//import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const saltRounds = 10;
+//const saltRounds = 10;
 
 const clientesController = {
     // --- Obter Cliente por ID ---
@@ -97,13 +97,13 @@ const clientesController = {
         }
 
         try {
-            const hashedPassword = await bcrypt.hash(senha, saltRounds);
+            //const hashedPassword = await bcrypt.hash(senha, saltRounds);
 
             const novo = {
                 nome: nome,
                 cpf_cnpj: cpf_cnpj,
                 email: email,
-                senha: hashedPassword,
+                senha: senha,
                 cep: cep,
                 complemento: complemento,
                 numero: numero,
@@ -186,19 +186,8 @@ const clientesController = {
             if (longitude !== undefined) updatedData.longitude = parseFloat(longitude); // Converte para float
 
             if (senha) {
-                updatedData.senha = await bcrypt.hash(senha, saltRounds);
-            } else {
-                // Se a senha não foi fornecida, busque a senha atual do banco de dados
-                const currentClientResult = await clientesRepository.getById(id);
-                if (currentClientResult.ok && currentClientResult.data) {
-                    updatedData.senha = currentClientResult.data.senha;
-                } else {
-                    return res.status(404).json({
-                        status: 404,
-                        ok: false,
-                        message: "Cliente não encontrado para atualização ou senha atual não disponível."
-                    });
-                }
+                updatedData.senha = senha;
+                //updatedData.senha = await bcrypt.hash(senha, saltRounds);
             }
 
             const result = await clientesRepository.update(id, updatedData);
@@ -241,20 +230,12 @@ const clientesController = {
         }
 
         try {
-            const userResult = await clientesRepository.getByEmailForLogin(email);
+            const userResult = await clientesRepository.getByEmailForLogin(email, senha);
 
-            if (!userResult.ok || !userResult.data) {
-                return res.status(401).json({
-                    status: 401,
-                    ok: false,
-                    message: "Email ou senha inválidos."
-                });
-            }
+            if (userResult.ok && userResult.data) {
+                // Se o repositório retornou dados, o login é válido.
+                const clienteNoBanco = userResult.data;
 
-            const clienteNoBanco = userResult.data;
-            const isPasswordValid = await bcrypt.compare(senha, clienteNoBanco.senha);
-
-            if (isPasswordValid) {
                 const payload = {
                     id: clienteNoBanco.id,
                     email: email,
@@ -265,31 +246,23 @@ const clientesController = {
                     expiresIn: process.env.JWT_EXPIRES_IN
                 });
 
-                const fullClienteResult = await clientesRepository.getById(clienteNoBanco.id);
-                if (fullClienteResult.ok) {
-                    res.status(200).json({
-                        status: 200,
-                        ok: true,
-                        message: "Login bem-sucedido!",
-                        data: {
-                            cliente: {
-                                id: fullClienteResult.data.id,
-                                nome: fullClienteResult.data.nome,
-                                email: fullClienteResult.data.email,
-                                latitude: fullClienteResult.data.latitude, // Incluído no retorno do login
-                                longitude: fullClienteResult.data.longitude // Incluído no retorno do login
-                            },
-                            token: token
-                        }
-                    });
-                } else {
-                    res.status(500).json({
-                        status: 500,
-                        ok: false,
-                        message: "Erro ao recuperar dados completos do cliente após login."
-                    });
-                }
+                res.status(200).json({
+                    status: 200,
+                    ok: true,
+                    message: "Login bem-sucedido!",
+                    data: {
+                        cliente: {
+                            id: clienteNoBanco.id,
+                            nome: clienteNoBanco.nome,
+                            email: clienteNoBanco.email,
+                            latitude: clienteNoBanco.latitude,
+                            longitude: clienteNoBanco.longitude
+                        },
+                        token: token
+                    }
+                });
             } else {
+                // Se não encontrou usuário, o email ou a senha estão inválidos.
                 res.status(401).json({
                     status: 401,
                     ok: false,
@@ -332,4 +305,3 @@ const clientesController = {
 };
 
 export default clientesController;
-
