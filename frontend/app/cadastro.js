@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config';
 
 // Imagem do logo
-const logo = require('../assets/images/logo-Jobconnect.png');
+const logo = require('../assets/images/hubServicos.png');
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState('');
@@ -355,7 +355,7 @@ export default function CadastroScreen() {
         </View>
 
         <Text style={styles.rodape}>
-          JobConnect – Conectando serviços, {'\n'}facilitando sua vida!
+          “HubServiços” – Conectando serviços, {'\n'}facilitando sua vida!
         </Text>
       </ScrollView>
 

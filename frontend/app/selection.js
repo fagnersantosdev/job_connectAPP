@@ -62,7 +62,7 @@ export default function SelectionScreen() {
     return (
         <View style={styles.container}>
             <Image
-                source={require('../assets/images/logo-Jobconnect.png')}
+                source={require('../assets/images/hubServicos.png')}
                 style={styles.logo}
                 resizeMode="contain"
             />
@@ -95,7 +95,7 @@ export default function SelectionScreen() {
                 <Text style={styles.startButtonText}>Começar</Text>
             </TouchableOpacity>
             <Text style={styles.footerText}>
-                JobConnect – Conectando serviços, {'\n'}facilitando sua vida!
+                Connect – Conectando serviços, {'\n'}facilitando sua vida!
             </Text>
         </View>
     );

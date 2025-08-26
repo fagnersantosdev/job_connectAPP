@@ -39,7 +39,7 @@ const ProfessionalCard = ({ professional }) => (
         <Ionicons name="star" size={16} color="#FFD233" />
         <Text style={styles.ratingText}>{professional.rating || 'N/A'}</Text>
       </View>
-      <Text style={styles.professionalJob}>{professional.job}</Text>
+      <Text style={styles.professionalHub}>{professional.hub}</Text>
       <Text style={styles.professionalDistance}>{professional.distance} de distância</Text>
     </View>
   </View>
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   professionalName: { fontSize: 16, fontWeight: 'bold', color: '#06437e' },
   ratingContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 },
   ratingText: { marginLeft: 5, fontSize: 14, color: '#333' },
-  professionalJob: { fontSize: 14, color: '#555' },
+  professionalHub: { fontSize: 14, color: '#555' },
   professionalDistance: { fontSize: 12, color: '#888', marginTop: 5 },
 
   // Overlay do menu

@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor JobConnect rodando em http://0.0.0.0:${PORT}`);
+    console.log(`Servidor HubServiços rodando em http://0.0.0.0:${PORT}`);
     console.log(`Socket.IO escutando em ws://0.0.0.0:${PORT}`);
     console.log('Pressione Ctrl+C para parar.');
 });

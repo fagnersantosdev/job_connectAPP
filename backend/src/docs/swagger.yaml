@@ -1,9 +1,9 @@
 # backend/src/docs/swagger.yaml
 openapi: 3.0.0
 info:
-  title: JobConnect API
+  title: HubServiços API
   version: 1.0.0
-  description: Documentação da API do backend do JobConnect, para conectar clientes e prestadores de serviços.
+  description: Documentação da API do backend do HubServiços, para conectar clientes e prestadores de serviços.
 servers:
   - url: http://localhost:3000
     description: Servidor de Desenvolvimento Local

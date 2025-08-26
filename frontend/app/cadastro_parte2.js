@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 // Imagem do logo
-const logo = require('../assets/images/logo-Jobconnect.png');
+const logo = require('../assets/images/hubServicos.png');
 
 export default function CadastroPrestador() {
   const [areaAtuacao, setAreaAtuacao] = useState('');
@@ -133,7 +133,7 @@ export default function CadastroPrestador() {
         </Text>
       </View>
       <Text style={styles.footer}>
-        “JobConnect” – Conectando serviços,{'\n'} facilitando sua vida!
+        “HubServiços” – Conectando serviços,{'\n'} facilitando sua vida!
       </Text>
 
       <Modal

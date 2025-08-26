@@ -75,7 +75,7 @@ export default function TelaInicial() {
       
       {/* Rodapé */}
       <Text style={styles.footerText}>
-        “JobConnect” – Conectando serviços,{'\n'} facilitando sua vida!
+        “HubServiços” – Conectando serviços,{'\n'} facilitando sua vida!
       </Text>
     </LinearGradient>
   );

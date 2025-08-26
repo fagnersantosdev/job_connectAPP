@@ -11,7 +11,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'; // 🔹 Importa o componente de gradiente
 
 // Imagem do logo
-const logo = require('../assets/images/logo-Jobconnect.png');
+const logo = require('../assets/images/hubServicos.png');
 
 // Paleta de cores para o gradiente
 const COLORS = {
@@ -53,7 +53,7 @@ export default function CadastroSucessoScreen() {
         <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
         <Text style={styles.title}>Cadastro realizado com sucesso!</Text>
         <Text style={styles.message}>
-          Você agora faz parte da comunidade JobConnect.
+          Você agora faz parte da comunidade HubServiços.
         </Text>
         <TouchableOpacity style={styles.button} onPress={handleContinue}>
           <Text style={styles.buttonText}>Prosseguir</Text>

@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
 import { AuthContext } from '../app/AuthContext';
 
-const logo = require('../assets/images/logo-Jobconnect.png');
+const logo = require('../assets/images/hubServicos.png');
 
 export default function LoginScreen() {
   const router = useRouter();
