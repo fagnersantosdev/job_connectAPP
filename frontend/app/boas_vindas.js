@@ -26,7 +26,7 @@ const SIZES = {
 
 // Assumindo que a imagem está em 'assets/images/welcome-illustration.png'
 const welcomeIllustration = require('../assets/images/profissional_cliente.png');
-const logo = require('../assets/images/logo-Jobconnect.png');
+const logo = require('../assets/images/hubServicos.png');
 
 export default function TelaInicial() {
   const router = useRouter();
