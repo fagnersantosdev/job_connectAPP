@@ -11,7 +11,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'; // 🔹 Importa o componente de gradiente
 
 // Imagem do logo
-const logo = require('../assets/images/hubServicos.png');
+const logo = require('../assets/images/logo_hubServicos.png');
 
 // Paleta de cores para o gradiente
 const COLORS = {

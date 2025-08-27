@@ -1,34 +1,39 @@
-import { Router } from "express";
+import { Router } from 'express';
+import clientesController from '../controllers/clientesController.js';
+import prestadoresController from '../controllers/PrestadoresController.js';
 
-const loginRouter = Router();
+const router = Router();
 
-// Rota de login
-loginRouter.post('/api/login', (req, res) => {
-  // A requisição do frontend envia email e password no corpo
-  const { email, password } = req.body;
+// Rota principal de login: POST /login
+router.post('/login', (req, res, next) => {
+    // O frontend envia 'role', 'email' e 'password'
+    const { role, email, password } = req.body;
 
-  // LOGICA DE AUTENTICAÇÃO SIMPLES E TEMPORÁRIA
-  // Substitua isso pela sua verificação real no banco de dados.
-  // Por exemplo:
-  // const user = await findUserByEmail(email);
-  // if (user && user.password === password) { ... }
+    // Cria um novo objeto de requisição para garantir que os controllers
+    // recebam o campo 'senha' como esperado.
+    const newReq = {
+        ...req,
+        body: {
+            email: email,
+            senha: password, // <-- Converte 'password' para 'senha'
+        }
+    };
 
-  // Verificação de credenciais fixas para o teste
-  const userExists = email === 'teste@email.com' && password === '123456';
-
-  if (userExists) {
-    // Se as credenciais estiverem corretas, envie uma resposta de sucesso
-    // Você pode incluir um token de autenticação aqui
-    res.status(200).json({
-      message: 'Login bem-sucedido!',
-      user: { email: email } // Exemplo de dados do usuário
-    });
-  } else {
-    // Se as credenciais estiverem incorretas, envie uma resposta de erro 401
-    res.status(401).json({
-      message: 'E-mail ou senha incorretos.'
-    });
-  }
+    // Direciona para o controller apropriado com base no 'role'
+    if (role === 'cliente') {
+        return clientesController.loginCliente(newReq, res, next);
+    } 
+    else if (role === 'prestador') {
+        return prestadoresController.loginPrestador(newReq, res, next);
+    } 
+    else {
+        // Se nenhum 'role' for fornecido, retorna um erro claro.
+        return res.status(400).json({
+            status: 400,
+            ok: false,
+            message: "O campo 'role' ('cliente' ou 'prestador') é obrigatório."
+        });
+    }
 });
 
-export default loginRouter;
+export default router;

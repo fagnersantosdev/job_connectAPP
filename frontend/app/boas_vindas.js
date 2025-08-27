@@ -13,7 +13,7 @@ const COLORS = {
 
 const SIZES = {
   paddingHorizontal: 20,
-  logoWidth: 200,
+  logoWidth: 250,
   logoHeight: 150,
   logoMarginBottom: 30,
   titleFontSize: 25,
@@ -26,7 +26,7 @@ const SIZES = {
 
 // Assumindo que a imagem está em 'assets/images/welcome-illustration.png'
 const welcomeIllustration = require('../assets/images/profissional_cliente.png');
-const logo = require('../assets/images/hubServicos.png');
+const logo = require('../assets/images/logo_hubServicos.png');
 
 export default function TelaInicial() {
   const router = useRouter();
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     width: SIZES.logoWidth,
     height: SIZES.logoHeight,
     marginBottom: SIZES.logoMarginBottom,
-    marginTop: 0,
+    marginTop: -60,
   },
   illustration: {
     width: 300,

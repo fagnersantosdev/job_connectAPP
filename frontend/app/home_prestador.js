@@ -85,7 +85,7 @@ export default function HomePrestadorScreen() {
             {/* Cabeçalho */}
             <View style={styles.header}>
                 <View style={styles.headerLogoContainer}>
-                    <Image source={require('../assets/images/hubServicos.png')} style={styles.logo} resizeMode="contain" />
+                    <Image source={require('../assets/images/logo_hubServicos.png')} style={styles.logo} resizeMode="contain" />
                 </View>
                 <TouchableOpacity style={styles.profileIconContainer}>
                     <Ionicons name="person-circle" size={38} color="#06437e" />

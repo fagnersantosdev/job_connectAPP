@@ -9,7 +9,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
 import { AuthContext } from '../app/AuthContext';
 
-const logo = require('../assets/images/hubServicos.png');
+const logo = require('../assets/images/logo_hubServicos.png');
+const SIZES ={
+  startButtonMarginTop: 20,
+  footerMarginTop: 30,
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -156,6 +160,9 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+            <Text style={styles.footerText}>
+                “HubServiços” – Conectando serviços, {'\n'}facilitando sua vida!
+            </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -185,10 +192,10 @@ const styles = StyleSheet.create({
 
   // Logo e textos
   logo: {
-    width: 250,
-    height: 100,
+    width: 300,
+    height: 150,
     resizeMode: 'contain',
-    marginTop: -20,
+    marginTop: 25,
     marginBottom: 0,
   },
   title: {
@@ -268,4 +275,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2563EB',
   },
+  footerText: {
+        marginTop: SIZES.footerMarginTop,
+        fontSize: SIZES.footerFontSize,
+        color: '#ffffff',
+        textAlign: 'center',
+  }
 });

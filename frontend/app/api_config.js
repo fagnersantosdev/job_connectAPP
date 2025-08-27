@@ -18,9 +18,8 @@ export const BASE_URL = 'http://10.0.2.2:3000';
 
 //192.168.0.100 
 //192.168.101.95 
+//192.168.1.65
 
-const IP_DO_SERVIDOR = 'http://192.168.0.100:3000'; // Substitua pelo seu IP atual
-
-                        
+const IP_DO_SERVIDOR = 'http://192.168.101.95:3000'; // Substitua pelo seu IP atual
 
 export { IP_DO_SERVIDOR };

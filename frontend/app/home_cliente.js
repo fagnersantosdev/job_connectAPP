@@ -17,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { AuthContext } from '../app/AuthContext'; // 1. Importar o AuthContext
 import { IP_DO_SERVIDOR } from '../app/api_config'; // Importar a URL da API
 
-const logo = require('../assets/images/hubServicos.png');
+const logo = require('../assets/images/logo_hubServicos.png');
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 

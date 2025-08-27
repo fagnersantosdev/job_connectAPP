@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config';
 
 // Imagem do logo
-const logo = require('../assets/images/hubServicos.png');
+const logo = require('../assets/images/logo_hubServicos.png');
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState('');

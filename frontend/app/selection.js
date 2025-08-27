@@ -21,7 +21,7 @@ const SIZES = {
   logoHeight: 200,
   titleFontSize: 25,
   buttonFontSize: 16,
-  loginFontSize: 14,
+  loginFontSize: 16,
   footerFontSize: 13,
   paddingHorizontal: 20,
   buttonPaddingVertical: 15,
@@ -42,7 +42,7 @@ export default function SelectionScreen() {
 
     const handleStart = () => {
         if (!selectedRole) {
-            setError('Por favor, selecione se você é cliente ou prestador.');
+            setError('Por favor, selecione se você é cliente ou prestador de serviços.');
             return;
         }
 
@@ -62,11 +62,14 @@ export default function SelectionScreen() {
     return (
         <View style={styles.container}>
             <Image
-                source={require('../assets/images/hubServicos.png')}
+                source={require('../assets/images/logo_hubServicos.png')}
                 style={styles.logo}
                 resizeMode="contain"
             />
             <Text style={styles.title}>Bem vindo</Text>
+            <Text style={styles.description}>
+                Selecione se você é cliente ou prestador de serviços.
+            </Text>
             <TouchableOpacity
                 style={[
                     styles.selectButton,
@@ -95,7 +98,7 @@ export default function SelectionScreen() {
                 <Text style={styles.startButtonText}>Começar</Text>
             </TouchableOpacity>
             <Text style={styles.footerText}>
-                Connect – Conectando serviços, {'\n'}facilitando sua vida!
+                “HubServiços” – Conectando serviços, {'\n'}facilitando sua vida!
             </Text>
         </View>
     );
@@ -180,4 +183,12 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         textAlign: 'center',
     },
+    description: {
+        fontSize: 16,
+        color: '#333',
+        textAlign: 'center',
+        marginBottom: 10,
+        paddingHorizontal: 30,
+
+    }
 });
