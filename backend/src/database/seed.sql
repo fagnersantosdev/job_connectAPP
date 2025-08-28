@@ -2,6 +2,11 @@
 -- A opção CASCADE remove dados em tabelas dependentes automaticamente
 TRUNCATE TABLE clientes, prestadores, categorias_servico, servicos_oferecidos RESTART IDENTITY CASCADE;
 
+DELETE from clientes;
+DELETE from prestadores;
+DELETE from categorias_servico;
+DELETE from servicos_oferecidos;
+
 -- 1. Inserir Categorias de Serviço
 -- IDs começarão em 1 novamente: 1=Elétrica, 2=Encanamento, etc.
 INSERT INTO categorias_servico (nome, icone_url) VALUES
