@@ -7,13 +7,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
-import { AuthContext } from '../app/AuthContext';
+import { AuthContext } from '../app/AuthContext'; // Corrigido o caminho se necessário
 
 const logo = require('../assets/images/logo_hubServicos.png');
-const SIZES ={
-  startButtonMarginTop: 20,
-  footerMarginTop: 30,
-}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -60,7 +56,7 @@ export default function LoginScreen() {
     }
 
     // -------------------- LOGIN ADMIN --------------------
-    if (email === 'admin' && password === 'admin') {
+    if (email.toLowerCase() === 'admin' && password === 'admin') {
       login({ nome: 'Administrador', role: 'admin', email: 'admin' });
       router.push('/admin_tela'); // ou qualquer rota inicial
       return;
@@ -79,13 +75,24 @@ export default function LoginScreen() {
       const userData = await response.json();
 
       if (response.ok) {
-        login(userData.user);
+        // CORREÇÃO: Acessar o objeto de usuário dentro de 'data'
+        const userObject = userData.data.cliente || userData.data.prestador;
 
-        if (userData.user.role === 'prestador') {
-          router.push('/home_prestador');
+        if (userObject) {
+            login(userObject);
+
+            // Adiciona o 'role' ao objeto do usuário para consistência
+            const userRole = role || (userData.data.cliente ? 'cliente' : 'prestador');
+
+            if (userRole === 'prestador') {
+              router.push('/home_prestador');
+            } else {
+              router.push('/home_cliente');
+            }
         } else {
-          router.push('/home_cliente');
+             Alert.alert('Erro de Login', 'Resposta inesperada do servidor.');
         }
+
       } else {
         Alert.alert('Erro no Login', userData.message || 'E-mail ou senha incorretos.');
       }
@@ -161,12 +168,18 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
             <Text style={styles.footerText}>
-                “HubServiços” – Conectando serviços, {'\n'}facilitando sua vida!
+              “HubServiços” – Conectando serviços, {'\n'}facilitando sua vida!
             </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
+}
+
+// CORREÇÃO: Movido SIZES para fora para ser acessível pelos estilos
+const SIZES ={
+  footerMarginTop: 30,
+  footerFontSize: 13,
 }
 
 const styles = StyleSheet.create({
@@ -276,9 +289,9 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
   footerText: {
-        marginTop: SIZES.footerMarginTop,
-        fontSize: SIZES.footerFontSize,
-        color: '#ffffff',
-        textAlign: 'center',
+      marginTop: SIZES.footerMarginTop,
+      fontSize: SIZES.footerFontSize,
+      color: '#ffffff',
+      textAlign: 'center',
   }
 });

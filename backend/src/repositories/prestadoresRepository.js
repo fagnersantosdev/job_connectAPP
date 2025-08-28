@@ -226,18 +226,23 @@ const prestadoresRepository = {
      */
     
     // --- Método para Encontrar Prestadores Próximos (Query Corrigida) ---
-    findProximos: async (categoriaNome, clienteId) => {
+    // --- Método para Encontrar Prestadores Próximos (Query Dinâmica) ---
+    findProximos: async (filtros) => {
+        const { clienteId, categoriaNome, tituloServico } = filtros;
+
         try {
-            // 1. Buscar as coordenadas do cliente
             const clienteResult = await conexao.oneOrNone('SELECT latitude, longitude FROM clientes WHERE id = $1', [clienteId]);
             if (!clienteResult) {
                 return { status: 404, ok: false, message: 'Cliente não encontrado.' };
             }
             const { latitude: clienteLat, longitude: clienteLon } = clienteResult;
 
-            // 2. Query SQL com a Fórmula de Haversine e JOINs corretos
-            const query = `
-                SELECT 
+            // Inicia a construção da query e dos parâmetros
+            let params = [clienteLat, clienteLon];
+            // A cláusula DISTINCT garante que cada prestador apareça apenas uma vez,
+            // mesmo que ofereça múltiplos serviços que correspondam à busca.
+            let query = `
+                SELECT DISTINCT ON (p.id)
                     p.id, 
                     p.nome, 
                     p.foto,
@@ -253,14 +258,33 @@ const prestadoresRepository = {
                     servicos_oferecidos so ON p.id = so.prestador_id
                 INNER JOIN 
                     categorias_servico cs ON so.categoria_id = cs.id
-                WHERE 
-                    cs.nome = $3 AND p.status_disponibilidade = 'online'
+            `;
+            
+            let whereConditions = [`p.status_disponibilidade = 'online'`];
+
+            // Adiciona o filtro de categoria se ele for fornecido
+            if (categoriaNome) {
+                params.push(categoriaNome);
+                whereConditions.push(`cs.nome = $${params.length}`);
+            }
+
+            // Adiciona o filtro por título do serviço se ele for fornecido
+            if (tituloServico) {
+                params.push(tituloServico);
+                whereConditions.push(`so.titulo = $${params.length}`);
+            }
+            
+            if (whereConditions.length > 0) {
+                query += ` WHERE ${whereConditions.join(' AND ')}`;
+            }
+
+            query += `
                 ORDER BY 
-                    distancia_km
+                    p.id, distancia_km
                 LIMIT 10;
             `;
 
-            const prestadores = await conexao.any(query, [clienteLat, clienteLon, categoriaNome]);
+            const prestadores = await conexao.any(query, params);
             return { status: 200, ok: true, data: prestadores };
 
         } catch (error) {

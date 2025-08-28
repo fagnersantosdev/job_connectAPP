@@ -9,7 +9,7 @@ const servicosOferecidosRepository = {
     create: async (obj) => {
         // Incluído 'ativo' no INSERT
         const sql = `INSERT INTO servicos_oferecidos (prestador_id, categoria_id, titulo, descricao, valor_estimado, ativo, disponibilidade)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`;
+                         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`;
         try {
             const newServico = await conexao.one(sql, [
                 obj.prestador_id,
@@ -53,11 +53,11 @@ const servicosOferecidosRepository = {
     getById: async (id) => {
         // Incluído 'so.ativo' no SELECT
         const sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
-                     c.nome AS nome_categoria, c.icone_url AS icone_categoria
-                     FROM servicos_oferecidos so
-                     JOIN prestadores p ON so.prestador_id = p.id
-                     JOIN categorias_servico c ON so.categoria_id = c.id
-                     WHERE so.id = $1;`;
+                         c.nome AS nome_categoria, c.icone_url AS icone_categoria
+                         FROM servicos_oferecidos so
+                         JOIN prestadores p ON so.prestador_id = p.id
+                         JOIN categorias_servico c ON so.categoria_id = c.id
+                         WHERE so.id = $1;`;
         try {
             const servico = await conexao.oneOrNone(sql, [id]);
             if (servico) {
@@ -94,10 +94,10 @@ const servicosOferecidosRepository = {
     getAll: async (filtros = {}) => {
         // Incluído 'so.ativo' no SELECT
         let sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
-                   c.nome AS nome_categoria, c.icone_url AS icone_categoria
-                   FROM servicos_oferecidos so
-                   JOIN prestadores p ON so.prestador_id = p.id
-                   JOIN categorias_servico c ON so.categoria_id = c.id`;
+                      c.nome AS nome_categoria, c.icone_url AS icone_categoria
+                      FROM servicos_oferecidos so
+                      JOIN prestadores p ON so.prestador_id = p.id
+                      JOIN categorias_servico c ON so.categoria_id = c.id`;
         const params = [];
         const conditions = [];
         let paramCount = 1;
@@ -144,6 +144,24 @@ const servicosOferecidosRepository = {
                 message: 'Erro de servidor ao buscar serviços oferecidos',
                 sqlMessage: error.message
             };
+        }
+    },
+
+    // --- NOVO MÉTODO PARA BUSCAR SUGESTÕES ---
+    getSugestoes: async (query) => {
+        const sql = `
+            SELECT DISTINCT titulo 
+            FROM servicos_oferecidos 
+            WHERE titulo ILIKE $1 
+            LIMIT 5;
+        `;
+        try {
+            const result = await conexao.any(sql, [`${query}%`]);
+            const sugestoes = result.map(item => item.titulo);
+            return { status: 200, ok: true, data: sugestoes };
+        } catch (error) {
+            console.error('Erro no repositório ao buscar sugestões:', error);
+            return { status: 500, ok: false, message: 'Erro interno do servidor.' };
         }
     },
 

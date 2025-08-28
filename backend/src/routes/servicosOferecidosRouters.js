@@ -23,4 +23,7 @@ router.put('/:id', authMiddleware, servicosOferecidosController.updateServicoOfe
 // DELETE /servicos-oferecidos/:id - Deletar um serviço oferecido (apenas o prestador dono)
 router.delete('/:id', authMiddleware, servicosOferecidosController.deleteServicoOferecido);
 
+// Rota para sugestões: GET /servicos-oferecidos/sugestoes?q=texto
+router.get('/sugestoes', servicosOferecidosController.getSugestoes);
+
 export default router;

@@ -131,6 +131,27 @@ const servicosOferecidosController = {
         }
     },
 
+    // --- NOVO MÉTODO PARA SUGESTÕES DE BUSCA ---
+    getSugestoes: async (req, res) => {
+        const { q } = req.query; // q = query de busca do usuário
+
+        if (!q || q.length < 2) {
+            return res.json([]); // Retorna um array vazio se a busca for muito curta
+        }
+
+        try {
+            const result = await servicosOferecidosRepository.getSugestoes(q);
+            if (result.ok) {
+                res.status(result.status).json(result.data);
+            } else {
+                res.status(result.status).json({ message: result.message });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar sugestões de serviços:', error);
+            res.status(500).json({ message: 'Erro interno do servidor.' });
+        }
+    },
+
     /**
      * @description Atualiza um serviço oferecido.
      * Apenas o prestador que criou o serviço pode atualizá-lo.

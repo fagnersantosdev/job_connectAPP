@@ -15,6 +15,7 @@ import mensagensRouters from './routes/mensagensRouters.js';
 import pagamentosRouters from './routes/pagamentosRouters.js';
 import loginRouter from './routes/loginRouters.js';
 
+
 import authMiddleware from './middlewares/authMiddleware.js';
 import mensagensController from './controllers/mensagensController.js';
 

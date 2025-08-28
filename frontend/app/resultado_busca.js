@@ -7,10 +7,9 @@ import { IP_DO_SERVIDOR } from '../app/api_config';
 
 const PrestadorCard = ({ prestador }) => (
     <TouchableOpacity style={styles.card}>
-        <Image source={{ uri: prestador.imagem || 'https://placehold.co/100x100/png?text=User' }} style={styles.image} />
+        <Image source={{ uri: prestador.foto || 'https://placehold.co/100x100/png?text=User' }} style={styles.image} />
         <View style={styles.infoContainer}>
             <Text style={styles.name}>{prestador.nome}</Text>
-            {/* Arredonda a distância para 1 casa decimal */}
             <Text style={styles.distance}>{parseFloat(prestador.distancia_km).toFixed(1)} km de distância</Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color="#B0B0B0" />
@@ -19,18 +18,27 @@ const PrestadorCard = ({ prestador }) => (
 
 export default function ResultadosBuscaScreen() {
     const { user } = useContext(AuthContext);
-    const params = useLocalSearchParams(); // Pega os parâmetros da rota
-    const { categoria } = params;
+    const params = useLocalSearchParams();
+    const { categoria, tituloServico } = params; // Agora pode receber um ou outro
     const router = useRouter();
 
     const [prestadores, setPrestadores] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user && categoria) {
+        if (user && (categoria || tituloServico)) {
             const fetchPrestadoresProximos = async () => {
+                // Constrói a URL da API dinamicamente com os filtros
+                let apiUrl = `${IP_DO_SERVIDOR}/prestadores/proximos?clienteId=${user.id}`;
+                if (categoria) {
+                    apiUrl += `&categoria=${categoria}`;
+                }
+                if (tituloServico) {
+                    apiUrl += `&tituloServico=${tituloServico}`;
+                }
+
                 try {
-                    const response = await fetch(`${IP_DO_SERVIDOR}/prestadores/proximos?categoria=${categoria}&clienteId=${user.id}`);
+                    const response = await fetch(apiUrl);
                     const data = await response.json();
                     setPrestadores(data);
                 } catch (error) {
@@ -41,10 +49,10 @@ export default function ResultadosBuscaScreen() {
             };
             fetchPrestadoresProximos();
         }
-    }, [user, categoria]);
+    }, [user, categoria, tituloServico]);
 
     if (loading) {
-        return <ActivityIndicator size="large" color="#06437e" style={{ flex: 1 }} />;
+        return <ActivityIndicator size="large" color="#06437e" style={{ flex: 1, justifyContent: 'center' }} />;
     }
 
     return (
@@ -53,13 +61,14 @@ export default function ResultadosBuscaScreen() {
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={28} color="#06437e" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{categoria}</Text>
+                {/* O título da tela agora mostra o que foi buscado */}
+                <Text style={styles.headerTitle}>{tituloServico || categoria}</Text>
             </View>
             <FlatList
                 data={prestadores}
                 renderItem={({ item }) => <PrestadorCard prestador={item} />}
                 keyExtractor={item => item.id.toString()}
-                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum prestador encontrado para esta categoria.</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>Nenhum prestador encontrado.</Text>}
                 contentContainerStyle={styles.list}
             />
         </View>
@@ -67,36 +76,5 @@ export default function ResultadosBuscaScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F0F7FF' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 50,
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E0EFFF',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#06437e',
-        marginLeft: 15,
-    },
-    list: { padding: 20 },
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 15,
-        padding: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-        elevation: 3,
-    },
-    image: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
-    infoContainer: { flex: 1 },
-    name: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-    distance: { fontSize: 14, color: '#666', marginTop: 5 },
-    emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#666' },
+    // ... (estilos da tela de resultados)
 });
