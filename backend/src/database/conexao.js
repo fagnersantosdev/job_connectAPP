@@ -65,7 +65,9 @@
 // docker volume rm jobconnect-app_db_data # Garante que o volume de dados seja removido
 
 // (comando PARA EXECUTAR O SCRIPT.DB E CRIAR O NOVO BANCO COM OS DADOS)
-//type src/database/scriptdb.sql | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
+//type src/database/scriptdb.sql | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db]
+//ou
+//Get-Content -Path src\database\seed.sql -Encoding UTF8 | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
 
 // (comando PARA CONFIRMAR SE O VALOR DO SERVIÇO FOI DEPOSITADO)
 // echo "SELECT * FROM contas_custodia WHERE solicitacao_id = 1;" | docker exec -i jobconnect_postgres_db psql -U postgres jobconnect_db
