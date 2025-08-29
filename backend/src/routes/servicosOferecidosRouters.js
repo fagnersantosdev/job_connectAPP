@@ -1,29 +1,29 @@
-import express from 'express';
+import { Router } from 'express';
 import servicosOferecidosController from '../controllers/servicosOferecidosController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
-const router = express.Router();
+const router = Router();
 
-// Rotas para Serviços Oferecidos
+// --- CORREÇÃO: A rota mais específica '/sugestoes' deve vir ANTES da rota genérica '/:id' ---
 
-// POST /servicos-oferecidos - Criar um novo serviço oferecido (apenas prestadores)
-router.post('/', authMiddleware, servicosOferecidosController.createServicoOferecido);
+// Rota pública para buscar sugestões de serviços
+// Ex: GET /servicos-oferecidos/sugestoes?q=instala
+router.get('/sugestoes', servicosOferecidosController.getSugestoes);
 
-// GET /servicos-oferecidos - Obter todos os serviços oferecidos (com filtros opcionais)
-// Pode ser acessado por qualquer um (público)
+// Rota pública para buscar todos os serviços (com filtros)
 router.get('/', servicosOferecidosController.getAllServicosOferecidos);
 
-// GET /servicos-oferecidos/:id - Obter um serviço oferecido por ID
-// Pode ser acessado por qualquer um (público)
+// Rota pública para buscar um serviço por ID
 router.get('/:id', servicosOferecidosController.getServicoOferecidoById);
 
-// PUT /servicos-oferecidos/:id - Atualizar um serviço oferecido (apenas o prestador dono)
+// Rota privada para um prestador criar um novo serviço
+router.post('/', authMiddleware, servicosOferecidosController.createServicoOferecido);
+
+// Rota privada para um prestador atualizar seu serviço
 router.put('/:id', authMiddleware, servicosOferecidosController.updateServicoOferecido);
 
-// DELETE /servicos-oferecidos/:id - Deletar um serviço oferecido (apenas o prestador dono)
+// Rota privada para um prestador deletar seu serviço
 router.delete('/:id', authMiddleware, servicosOferecidosController.deleteServicoOferecido);
 
-// Rota para sugestões: GET /servicos-oferecidos/sugestoes?q=texto
-router.get('/sugestoes', servicosOferecidosController.getSugestoes);
 
 export default router;

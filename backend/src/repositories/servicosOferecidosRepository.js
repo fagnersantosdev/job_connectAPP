@@ -51,7 +51,6 @@ const servicosOferecidosRepository = {
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
      */
     getById: async (id) => {
-        // Incluído 'so.ativo' no SELECT
         const sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
                          c.nome AS nome_categoria, c.icone_url AS icone_categoria
                          FROM servicos_oferecidos so
@@ -92,7 +91,6 @@ const servicosOferecidosRepository = {
      * @returns {Promise<{status: number, ok: boolean, message: string, data: Array<Object>|string}>}
      */
     getAll: async (filtros = {}) => {
-        // Incluído 'so.ativo' no SELECT
         let sql = `SELECT so.*, p.nome AS nome_prestador, p.foto AS foto_prestador,
                       c.nome AS nome_categoria, c.icone_url AS icone_categoria
                       FROM servicos_oferecidos so
@@ -110,15 +108,15 @@ const servicosOferecidosRepository = {
             conditions.push(`so.categoria_id = $${paramCount++}`);
             params.push(filtros.categoria_id);
         }
-        if (filtros.ativo !== undefined) { // Filtro por status 'ativo'
+        if (filtros.ativo !== undefined) {
             conditions.push(`so.ativo = $${paramCount++}`);
             params.push(filtros.ativo);
         }
-        if (filtros.titulo) { // Busca por título (ILIKE para case-insensitive)
+        if (filtros.titulo) {
             conditions.push(`so.titulo ILIKE $${paramCount++}`);
             params.push(`%${filtros.titulo}%`);
         }
-        if (filtros.disponibilidade) { // Filtro por disponibilidade
+        if (filtros.disponibilidade) {
             conditions.push(`so.disponibilidade = $${paramCount++}`);
             params.push(filtros.disponibilidade);
         }
@@ -126,7 +124,7 @@ const servicosOferecidosRepository = {
         if (conditions.length > 0) {
             sql += ' WHERE ' + conditions.join(' AND ');
         }
-        sql += ' ORDER BY so.data_criacao DESC;'; // Ordena pelos mais recentes
+        sql += ' ORDER BY so.data_criacao DESC;';
 
         try {
             const list = await conexao.any(sql, params);
@@ -147,7 +145,7 @@ const servicosOferecidosRepository = {
         }
     },
 
-    // --- NOVO MÉTODO PARA BUSCAR SUGESTÕES ---
+    // --- MÉTODO DE SUGESTÕES ATUALIZADO ---
     getSugestoes: async (query) => {
         const sql = `
             SELECT DISTINCT titulo 
@@ -156,7 +154,8 @@ const servicosOferecidosRepository = {
             LIMIT 5;
         `;
         try {
-            const result = await conexao.any(sql, [`${query}%`]);
+            // CORREÇÃO: Adicionado '%' no início para buscar em qualquer parte do texto
+            const result = await conexao.any(sql, [`%${query}%`]);
             const sugestoes = result.map(item => item.titulo);
             return { status: 200, ok: true, data: sugestoes };
         } catch (error) {
@@ -169,17 +168,13 @@ const servicosOferecidosRepository = {
      * @description Atualiza um serviço oferecido existente.
      * @param {number} id - O ID do serviço a ser atualizado.
      * @param {Object} obj - Objeto contendo os dados atualizados do serviço.
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
      */
     update: async (id, obj) => {
         const fields = [];
-        const params = [id]; // O primeiro parâmetro é o ID para o WHERE
-        let paramCount = 2; // Começa a contagem para os campos a serem atualizados
+        const params = [id];
+        let paramCount = 2;
 
-        if (obj.prestador_id !== undefined) { // Embora o prestador_id não deva ser alterado via UPDATE, mantido para flexibilidade se necessário
-            fields.push(`prestador_id = $${paramCount++}`);
-            params.push(obj.prestador_id);
-        }
         if (obj.categoria_id !== undefined) {
             fields.push(`categoria_id = $${paramCount++}`);
             params.push(obj.categoria_id);
@@ -196,11 +191,11 @@ const servicosOferecidosRepository = {
             fields.push(`valor_estimado = $${paramCount++}`);
             params.push(obj.valor_estimado);
         }
-        if (obj.ativo !== undefined) { // Incluído 'ativo' no UPDATE
+        if (obj.ativo !== undefined) {
             fields.push(`ativo = $${paramCount++}`);
             params.push(obj.ativo);
         }
-        if (obj.disponibilidade !== undefined) { // Incluído 'disponibilidade' no UPDATE
+        if (obj.disponibilidade !== undefined) {
             fields.push(`disponibilidade = $${paramCount++}`);
             params.push(obj.disponibilidade);
         }
@@ -209,7 +204,6 @@ const servicosOferecidosRepository = {
             return { status: 400, ok: false, message: "Nenhum campo para atualizar fornecido." };
         }
 
-        // Adiciona data_atualizacao automaticamente
         const sql = `UPDATE servicos_oferecidos SET ${fields.join(', ')}, data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *;`;
 
         try {
@@ -231,14 +225,6 @@ const servicosOferecidosRepository = {
             }
         } catch (error) {
             console.error('Erro ao atualizar serviço oferecido:', error);
-            if (error.code === '23503') { // foreign_key_violation
-                return {
-                    status: 400,
-                    ok: false,
-                    message: 'ID de prestador ou categoria inválido(a).',
-                    sqlMessage: error.message
-                };
-            }
             return {
                 status: 500,
                 ok: false,
@@ -251,14 +237,13 @@ const servicosOferecidosRepository = {
     /**
      * @description Deleta um serviço oferecido.
      * @param {number} id - O ID do serviço a ser deletado.
-     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>} Objeto de resposta padronizado.
+     * @returns {Promise<{status: number, ok: boolean, message: string, data: Object|null|string}>}
      */
     delete: async (id) => {
         const sql = "DELETE FROM servicos_oferecidos WHERE id=$1 RETURNING id;";
         try {
             const deletedRow = await conexao.oneOrNone(sql, [id]);
             if (deletedRow) {
-                console.log(`Serviço oferecido com ID ${id} deletado.`);
                 return {
                     status: 200,
                     ok: true,
