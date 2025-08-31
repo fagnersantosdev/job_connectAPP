@@ -161,7 +161,7 @@ export default function HomePrestadorScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F0F7FF',
+        backgroundColor: 'transparent',
     },
     contentContainer: {
         paddingHorizontal: 20,
@@ -180,13 +180,14 @@ const styles = StyleSheet.create({
     },
     logo: {
         width: 150,
-        height: 40,
+        height: 100,
+        marginLeft: 90
     },
     profileIconContainer: {
         padding: 5,
     },
     welcomeCard: {
-        backgroundColor: '#E0EFFF',
+        backgroundColor: '#FFF',
         borderRadius: 15,
         padding: 20,
         flexDirection: 'row',
