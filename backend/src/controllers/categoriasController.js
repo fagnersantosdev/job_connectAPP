@@ -150,3 +150,4 @@ const categoriasController = {
 };
 
 export default categoriasController;
+
