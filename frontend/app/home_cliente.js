@@ -234,13 +234,13 @@ export default function HomeCliente() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F7FD', paddingTop: 50 },
+  container: { flex: 1, backgroundColor: 'transparent', paddingTop: 50 },
   scrollView: { paddingHorizontal: 20 },
   welcomeText: { fontSize: 24, fontWeight: '600', color: '#06437e', marginBottom: 15 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10 },
   menuButton: { padding: 5 },
   logoContainer: { flex: 1, alignItems: 'center' },
-  logo: { width: 150, height: 60 },
+  logo: { width: 150, height: 100 },
   profileIconContainer: {},
   headerProfileImage: { width: 40, height: 40, borderRadius: 20 },
   searchContainer: { marginBottom: 20, zIndex: 1 },
