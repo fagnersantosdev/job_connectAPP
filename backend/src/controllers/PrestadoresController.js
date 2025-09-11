@@ -43,18 +43,12 @@ const prestadoresController = {
     // --- Obter Todos os Prestadores ---
     getAllPrestadores: async (req, res) => {
         const result = await prestadoresRepository.getAll();
-
         if (result.ok) {
-            res.status(result.status).json(result.data);
+            res.status(result.status).json(result);
         } else {
-            res.status(result.status).json({
-                status: result.status,
-                ok: result.ok,
-                message: result.message
-            });
+            res.status(result.status).json(result);
         }
     },
-
     // --- Criar Novo Prestador ---
     createPrestadores: async (req, res) => {
         const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade, latitude, longitude } = req.body;
@@ -132,16 +126,23 @@ const prestadoresController = {
 
     // --- Login de Prestador ---
     loginPrestador: async (req, res) => {
+        console.log('\n--- [LOGIN PRESTADOR] Início do Pedido ---');
+        
         const { email, senha } = req.body;
+        console.log(`[LOGIN PRESTADOR] Tentativa de login para: ${email}`);
 
         if (!email || !senha) {
+            console.log('[LOGIN PRESTADOR] Falha: Email ou senha não fornecidos.');
             return res.status(400).json({ status: 400, ok: false, message: "Email e senha são obrigatórios." });
         }
 
         try {
+            console.log('[LOGIN PRESTADOR] Passo 1: A chamar o repositório para validar as credenciais...');
             const userResult = await prestadoresRepository.getByEmailForLogin(email, senha);
+            console.log('[LOGIN PRESTADOR] Passo 2: O repositório respondeu.', userResult);
 
             if (userResult.ok && userResult.data) {
+                console.log('[LOGIN PRESTADOR] Passo 3: Credenciais válidas. A gerar o token JWT...');
                 const prestadorNoBanco = userResult.data;
                 
                 const payload = {
@@ -153,7 +154,12 @@ const prestadoresController = {
                 const token = jwt.sign(payload, process.env.JWT_SECRET, {
                     expiresIn: process.env.JWT_EXPIRES_IN
                 });
+                console.log('[LOGIN PRESTADOR] Passo 4: Token JWT gerado com sucesso.');
 
+                // Adiciona a propriedade 'role' para consistência com o frontend
+                prestadorNoBanco.role = 'prestador';
+
+                console.log('[LOGIN PRESTADOR] Passo 5: A enviar a resposta de sucesso para o frontend.');
                 res.status(200).json({
                     status: 200,
                     ok: true,
@@ -163,16 +169,21 @@ const prestadoresController = {
                         token: token
                     }
                 });
+                console.log('--- [LOGIN PRESTADOR] Fim do Pedido (Sucesso) ---');
+
             } else {
+                console.log('[LOGIN PRESTADOR] Falha: Credenciais inválidas, a enviar erro 401.');
                 res.status(401).json({
                     status: 401,
                     ok: false,
-                    message: "Email ou senha inválidos."
+                    message: userResult.message || "Email ou senha inválidos."
                 });
+                console.log('--- [LOGIN PRESTADOR] Fim do Pedido (Falha) ---');
             }
         } catch (error) {
-            console.error("Erro no processo de login do prestador:", error);
+            console.error("[LOGIN PRESTADOR] ERRO CRÍTICO no processo de login:", error);
             res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor." });
+            console.log('--- [LOGIN PRESTADOR] Fim do Pedido (Erro Crítico) ---');
         }
     },
     

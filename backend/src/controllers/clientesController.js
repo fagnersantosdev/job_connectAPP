@@ -43,15 +43,10 @@ const clientesController = {
     // --- Obter Todos os Clientes ---
     getAllClientes: async (req, res) => {
         const result = await clientesRepository.getAll();
-
         if (result.ok) {
-            res.status(result.status).json(result.data);
+            res.status(result.status).json(result);
         } else {
-            res.status(result.status).json({
-                status: result.status,
-                ok: result.ok,
-                message: result.message
-            });
+            res.status(result.status).json(result);
         }
     },
 
@@ -220,22 +215,22 @@ const clientesController = {
     // --- Login de Cliente ---
     loginCliente: async (req, res) => {
         const { email, senha } = req.body;
+        console.log(`[LOGIN] Tentativa de login para o cliente: ${email}`);
 
         if (!email || !senha) {
-            return res.status(400).json({
-                status: 400,
-                ok: false,
-                message: "Email e senha são obrigatórios."
-            });
+            console.log('[LOGIN] Falha: Email ou senha não fornecidos.');
+            return res.status(400).json({ status: 400, ok: false, message: "Email e senha são obrigatórios." });
         }
 
         try {
+            console.log('[LOGIN] Passo 1: A chamar o repositório para validar as credenciais...');
             const userResult = await clientesRepository.getByEmailForLogin(email, senha);
+            console.log('[LOGIN] Passo 2: O repositório respondeu.', userResult);
 
             if (userResult.ok && userResult.data) {
-                // Se o repositório retornou dados, o login é válido.
+                console.log('[LOGIN] Passo 3: Credenciais válidas. A gerar o token JWT...');
                 const clienteNoBanco = userResult.data;
-
+                
                 const payload = {
                     id: clienteNoBanco.id,
                     email: email,
@@ -245,37 +240,32 @@ const clientesController = {
                 const token = jwt.sign(payload, process.env.JWT_SECRET, {
                     expiresIn: process.env.JWT_EXPIRES_IN
                 });
+                console.log('[LOGIN] Passo 4: Token JWT gerado com sucesso.');
 
+                // Adiciona a propriedade 'role' para consistência com o frontend
+                clienteNoBanco.role = 'cliente';
+
+                console.log('[LOGIN] Passo 5: A enviar a resposta de sucesso para o frontend.');
                 res.status(200).json({
                     status: 200,
                     ok: true,
                     message: "Login bem-sucedido!",
                     data: {
-                        cliente: {
-                            id: clienteNoBanco.id,
-                            nome: clienteNoBanco.nome,
-                            email: clienteNoBanco.email,
-                            latitude: clienteNoBanco.latitude,
-                            longitude: clienteNoBanco.longitude
-                        },
+                        cliente: clienteNoBanco,
                         token: token
                     }
                 });
             } else {
-                // Se não encontrou usuário, o email ou a senha estão inválidos.
+                console.log('[LOGIN] Falha: Credenciais inválidas, a enviar erro 401.');
                 res.status(401).json({
                     status: 401,
                     ok: false,
-                    message: "Email ou senha inválidos."
+                    message: userResult.message || "Email ou senha inválidos."
                 });
             }
         } catch (error) {
-            console.error("Erro no processo de login:", error);
-            res.status(500).json({
-                status: 500,
-                ok: false,
-                message: "Erro interno do servidor durante o login."
-            });
+            console.error("[LOGIN] ERRO CRÍTICO no processo de login:", error);
+            res.status(500).json({ status: 500, ok: false, message: "Erro interno do servidor." });
         }
     },
 
