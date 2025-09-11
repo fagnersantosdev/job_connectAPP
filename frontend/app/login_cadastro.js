@@ -73,6 +73,7 @@ export default function LoginScreen() {
       });
 
       const userData = await response.json();
+      console.log("Resposta da API:", userData);
 
       if (response.ok) {
         // CORREÇÃO: Acessar o objeto de usuário dentro de 'data'
