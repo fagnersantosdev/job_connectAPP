@@ -207,31 +207,31 @@ export default function CadastroScreen() {
 
       console.log('Status da resposta:', response.status);
       
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.indexOf('application/json') !== -1) {
-        const data = await response.json();
-        
-        if (response.ok) {
-          console.log('Cadastro bem-sucedido. Role:', role);
-          if (role === 'prestador') {
-            // Alterado para 'replace' para substituir a tela no histórico de navegação
-            router.replace('/cadastro_parte2');
-          } else {
-            router.replace({ pathname: '/cadastro_sucesso', params: { role } });
-          }
+      
+      const text = await response.text();
+      console.log("Resposta do servidor:", text);
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+
+      if (response.ok) {
+        console.log("Cadastro bem-sucedido. Role:", role);
+        if (role === "prestador") {
+          router.replace("/cadastro_parte2");
         } else {
-          console.log('Erro no servidor:', data.message);
-          showAlert('Erro', data.message || 'Ocorreu um erro no cadastro. Tente novamente.');
+          router.replace({ pathname: "/cadastro_sucesso", params: { role } });
         }
       } else {
-        const textResponse = await response.text();
-        console.error('A resposta do servidor não é JSON. Resposta completa:', textResponse);
-        showAlert(
-          'Erro do Servidor',
-          'Ocorreu um erro inesperado no servidor. A resposta não foi em JSON.'
-        );
+        showAlert("Erro", data?.message || `Falha no cadastro (status ${response.status})`);
       }
+
     } catch (error) {
+
+      
       console.error('Erro ao conectar com o servidor:', error);
       showAlert(
         'Erro de Conexão',
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderColor: '#CBD5E1',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 8,
     padding: 12,
     marginBottom: 10,
   },
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderColor: '#CBD5E1',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 10,
   },
