@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
-import { AuthContext } from '../app/AuthContext'; // Corrigido o caminho se necessário
+import { IP_DO_SERVIDOR } from '../config/api_config'; // Verifique se o caminho está correto
+import { AuthContext } from '../context/AuthContext'; // Corrigido o caminho se necessário
 
 const logo = require('../assets/images/logo_hubServicos.png');
 

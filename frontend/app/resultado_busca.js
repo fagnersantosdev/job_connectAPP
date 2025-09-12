@@ -2,8 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AuthContext } from '../app/AuthContext';
-import { IP_DO_SERVIDOR } from '../app/api_config';
+import { AuthContext } from '../context/AuthContext';
+import { IP_DO_SERVIDOR } from '../config/api_config';
 
 const PrestadorCard = ({ prestador }) => (
     <TouchableOpacity style={styles.card}>

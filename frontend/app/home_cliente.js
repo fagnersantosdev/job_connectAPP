@@ -15,8 +15,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import debounce from "lodash.debounce";
-import { AuthContext } from "../app/AuthContext"; // Caminho corrigido
-import { IP_DO_SERVIDOR } from "../app/api_config"; // Caminho corrigido
+import { AuthContext } from "../context/AuthContext"; // Caminho corrigido
+import { IP_DO_SERVIDOR } from "../config/api_config"; // Caminho corrigido
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const logo = require("../assets/images/logo_hubServicos.png");
@@ -119,7 +119,7 @@ const ProfessionalCard = ({ professional }) => (
 );
 
 // --- HomeCliente ---
-const HomeCliente = () => {
+  export default function HomeCliente () {
   const { user, logout } = useContext(AuthContext);
   const router = useRouter();
 
@@ -130,7 +130,7 @@ const HomeCliente = () => {
   const [categories, setCategories] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
   // Placeholder animado
   useEffect(() => {
     const suggestions = [
@@ -324,4 +324,5 @@ const styles = StyleSheet.create({
   menuItem: { paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: '#e0e0e0' },
   menuText: { fontSize: 18, color: "#06437e", fontWeight: '500' },
 });
+// export default HomeCliente;
 

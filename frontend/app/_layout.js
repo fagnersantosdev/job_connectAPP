@@ -1,7 +1,7 @@
 import { Slot } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
-import { AuthProvider } from '../app/AuthContext'; // 1. Importe o AuthProvider
+import { AuthProvider } from '../context/AuthContext'; // 1. Importe o AuthProvider
 
 export default function RootLayout() {
   return (

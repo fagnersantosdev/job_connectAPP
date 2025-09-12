@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { IP_DO_SERVIDOR } from '../app/api_config';
+import { IP_DO_SERVIDOR } from '../config/api_config';
 
 // Imagem do logo
 const logo = require('../assets/images/logo_hubServicos.png');
@@ -177,7 +177,7 @@ export default function CadastroScreen() {
 
     try {
       const serverIp = IP_DO_SERVIDOR || (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
-      const apiUrl = `${serverIp}/api/register`;
+      const apiUrl = `${serverIp}/api/clientes`;
       
       console.log('--- Iniciando requisição de cadastro ---');
       console.log('Payload:', {
@@ -185,7 +185,7 @@ export default function CadastroScreen() {
         cpf_cnpj: cleanedCpf,
         email,
         telefone: cleanedTelefone,
-        role,
+        senha,
         cep: cleanedCep,
       });
       console.log('Role recebido via useLocalSearchParams:', role);
@@ -201,7 +201,6 @@ export default function CadastroScreen() {
           email,
           telefone: cleanedTelefone,
           senha,
-          role,
           cep: cleanedCep,
         }),
       });

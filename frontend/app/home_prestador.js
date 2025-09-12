@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // 1. Importar a configuração da API
-import { IP_DO_SERVIDOR } from '../app/api_config'; // Verifique se o caminho está correto
+import { IP_DO_SERVIDOR } from '../config/api_config'; // Verifique se o caminho está correto
 
 // --- DADOS DO PRESTADOR LOGADO (viria do seu contexto de autenticação) ---
 const prestadorLogado = {

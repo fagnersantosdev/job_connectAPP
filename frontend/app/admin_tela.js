@@ -2,7 +2,7 @@
 import React, { useContext } from 'react';
 import { View, Text, Button, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AuthContext } from '../app/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 export default function AdminDashboard() {
   const router = useRouter();
