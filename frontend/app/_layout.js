@@ -1,11 +1,11 @@
-import { Slot } from 'expo-router';
+// app/_layout.js
+import { Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
-import { AuthProvider } from '../context/AuthContext'; // 1. Importe o AuthProvider
+import { AuthProvider } from '../context/AuthContext';
 
 export default function RootLayout() {
   return (
-    // 2. Envolva tudo com o AuthProvider
     <AuthProvider>
       <LinearGradient
         colors={['#F0F7FD', '#A4CAED', '#4894DB']}
@@ -14,15 +14,18 @@ export default function RootLayout() {
         end={{ x: 0.5, y: 1 }}
         style={styles.container}
       >
-        {/* O Slot renderiza a tela atual, que agora terá acesso ao contexto */}
-        <Slot />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: 'transparent' }, // 🔹 deixa as telas transparentes
+             animation: 'none', // 🔹 remove animação de transição
+          }}
+        />
       </LinearGradient>
     </AuthProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });

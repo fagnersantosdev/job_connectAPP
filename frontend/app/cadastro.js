@@ -177,7 +177,7 @@ export default function CadastroScreen() {
 
     try {
       const serverIp = IP_DO_SERVIDOR || (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
-      const apiUrl = `${serverIp}/api/clientes`;
+      const apiUrl = `${serverIp}/api/register`;
       
       console.log('--- Iniciando requisição de cadastro ---');
       console.log('Payload:', {

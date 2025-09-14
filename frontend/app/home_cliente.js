@@ -164,39 +164,56 @@ const ProfessionalCard = ({ professional }) => (
   useEffect(() => { debouncedFetchSugestoes(searchQuery) }, [searchQuery, debouncedFetchSugestoes]);
 
   // Buscar dados iniciais
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const catRes = await fetch(`${IP_DO_SERVIDOR}/categorias`);
-        if (catRes.ok) {
-            const catJson = await catRes.json();
-            const catData = catJson.data || [];
-            // CORREÇÃO: usa 'nome' para consistência
-            setCategories([...(Array.isArray(catData) ? catData : [catData]), { id: "mais", nome: "Mais Serviços..." }]);
-        } else {
-            console.error("Falha ao buscar categorias:", catRes.status);
-            setCategories([{ id: "mais", nome: "Mais Serviços..." }]);
-        }
+useEffect(() => {
+  if (!user) return;
 
-        const profRes = await fetch(`${IP_DO_SERVIDOR}/prestadores/proximos?clienteId=${user.id}`);
-        if(profRes.ok) {
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // --- Buscar categorias ---
+      const catRes = await fetch(`${IP_DO_SERVIDOR}/categorias`);
+      if (catRes.ok) {
+        const catJson = await catRes.json();
+        const catData = catJson.data || [];
+        setCategories([
+          ...(Array.isArray(catData) ? catData : [catData]),
+          { id: "mais", nome: "Mais Serviços..." },
+        ]);
+      } else {
+        console.error("Falha ao buscar categorias:", catRes.status);
+        setCategories([{ id: "mais", nome: "Mais Serviços..." }]);
+      }
+
+      // --- Buscar profissionais (só se o cliente tiver endereço/lat/lng) ---
+      if (user?.cep || (user?.latitude && user?.longitude)) {
+        try {
+          const profRes = await fetch(
+            `${IP_DO_SERVIDOR}/prestadores/proximos?clienteId=${user.id}`
+          );
+          if (profRes.ok) {
             const profJson = await profRes.json();
             const profData = profJson.data || [];
             setProfessionals(Array.isArray(profData) ? profData : [profData]);
-        } else {
-             console.error("Falha ao buscar profissionais:", profRes.status);
-             setProfessionals([]);
+          } else {
+            console.error("Falha ao buscar profissionais:", profRes.status);
+            setProfessionals([]);
+          }
+        } catch (e) {
+          console.error("Erro de rede ao buscar profissionais:", e);
+          setProfessionals([]);
         }
-
-      } catch (e) {
-        console.error("Erro de rede ao buscar dados iniciais:", e);
-      } finally {
-        setLoading(false);
+      } else {
+        console.log("Cliente sem endereço/geo definido. Não buscando profissionais próximos.");
+        setProfessionals([]);
       }
-    };
-    fetchData();
+    } catch (e) {
+      console.error("Erro de rede ao buscar dados iniciais:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
   }, [user]);
 
   if (!user) return <ActivityIndicator size="large" color="#06437e" style={{ flex: 1, justifyContent: 'center' }} />;
@@ -242,7 +259,7 @@ const ProfessionalCard = ({ professional }) => (
               placeholderTextColor="#888"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              onSubmitEditing={() => router.push({ pathname: "/resultados-busca", params: { tituloServico: searchQuery } })}
+              onSubmitEditing={() => router.push({ pathname: "/resultados_busca", params: { tituloServico: searchQuery } })}
             />
           </View>
           {sugestoes.length > 0 && (
@@ -272,7 +289,11 @@ const ProfessionalCard = ({ professional }) => (
                 />
 
                 <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
-                {professionals.map((prof, i) => <ProfessionalCard key={prof.id || i} professional={prof} />)}
+                    {professionals.length > 0 ? ( professionals.map((prof, i) => (
+                    <ProfessionalCard key={prof.id || i} professional={prof} />))
+                    ) : (
+                    <Text style={styles.emptyMessage}>Complete seu endereço no perfil para ver profissionais próximos.</Text>
+                    )}
             </>
         )}
       </ScrollView>
@@ -322,7 +343,17 @@ const styles = StyleSheet.create({
   },
   closeButton: { padding: 15, alignItems: "flex-end", marginBottom: 10 },
   menuItem: { paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: '#e0e0e0' },
-  menuText: { fontSize: 18, color: "#06437e", fontWeight: '500' },
+  menuText: { fontSize: 18, color: "#06437e", fontWeight: '500' 
+  },
+  emptyMessage: {
+  fontSize: 14,
+  color: "#666",
+  fontStyle: "italic",
+  textAlign: "center",
+  marginTop: 10,
+  marginBottom: 20,
+  },
+
 });
 // export default HomeCliente;
 

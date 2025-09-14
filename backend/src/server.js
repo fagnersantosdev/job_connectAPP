@@ -27,7 +27,7 @@ app.use(cors());
 mensagensController.setIoInstance(io);
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
+// const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(express.json());
 
@@ -59,9 +59,10 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, HOST, () => {
-    console.log(`Servidor HubServiços a rodar em http://${HOST}:${PORT}`);
-    console.log(`Socket.IO a escutar em ws://${HOST}:${PORT}`);
-    console.log('Pressione Ctrl+C para parar.');
+// Força sempre 0.0.0.0 para aceitar conexões externas
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`✅ Servidor HubServiços rodando em http://0.0.0.0:${PORT}`);
+    console.log(`✅ Socket.IO escutando em ws://0.0.0.0:${PORT}`);
+    console.log("Pressione Ctrl+C para parar.");
 });
 

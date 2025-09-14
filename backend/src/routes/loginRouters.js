@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import clientesController from '../controllers/clientesController.js';
-import prestadoresController from '../controllers/prestadoresController.js';
+import prestadoresController from '../controllers/PrestadoresController.js';
 
 // Middleware para verificar se as variáveis de ambiente essenciais estão carregadas
 const checkEnvVars = (req, res, next) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
@@ -8,34 +8,40 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient'; // 🔹 Importa o componente de gradiente
+import { LinearGradient } from 'expo-linear-gradient';
+import { AuthContext } from '../context/AuthContext';
 
 // Imagem do logo
 const logo = require('../assets/images/logo_hubServicos.png');
 
 // Paleta de cores para o gradiente
 const COLORS = {
-  gradientStart: '#E4F0FD', // Azul claro
-  gradientEnd: '#2563EB',   // Azul um pouco mais escuro
+  gradientStart: '#E4F0FD',
+  gradientEnd: '#4894DB',
   titleText: '#333',
   messageText: '#666',
   buttonBackground: '#FFD233',
   buttonText: '#333',
 };
 
-/**
- * Tela de Confirmação de Cadastro.
- * Exibe uma mensagem de sucesso e um botão para o usuário prosseguir.
- */
 export default function CadastroSucessoScreen() {
   const router = useRouter();
-  // Obtém os parâmetros da URL, incluindo o 'role'
-  const { role } = useLocalSearchParams();
+  const { login } = useContext(AuthContext);
 
-  // Função para navegar para a tela inicial
+  // Agora recebemos também os dados do usuário
+  const { role, id, nome, email } = useLocalSearchParams();
+
   const handleContinue = () => {
-    // Valida o 'role' e redireciona para a rota correta
-    if (role === 'prestador') {
+    // Salva o usuário no contexto
+    login({
+      id,
+      nome,
+      email,
+      role,
+    });
+
+    // Redireciona de acordo com o tipo
+    if (role?.toLowerCase() === 'prestador') {
       router.replace('/home_prestador');
     } else {
       router.replace('/home_cliente');
@@ -43,7 +49,6 @@ export default function CadastroSucessoScreen() {
   };
 
   return (
-    // 🔹 O fundo agora é um gradiente
     <LinearGradient
       colors={[COLORS.gradientStart, COLORS.gradientEnd]}
       style={styles.container}
@@ -75,7 +80,7 @@ const styles = StyleSheet.create({
     height: 150,
     resizeMode: 'contain',
     marginBottom: 5,
-    marginTop:-60,
+    marginTop: -60,
   },
   card: {
     backgroundColor: 'white',
