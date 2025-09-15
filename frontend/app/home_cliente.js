@@ -130,7 +130,9 @@ const ProfessionalCard = ({ professional }) => (
   const [categories, setCategories] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const [featuredProfessionals, setFeaturedProfessionals] = useState([]);
+
+
   // Placeholder animado
   useEffect(() => {
     const suggestions = [
@@ -202,19 +204,34 @@ useEffect(() => {
           console.error("Erro de rede ao buscar profissionais:", e);
           setProfessionals([]);
         }
-      } else {
-        console.log("Cliente sem endereço/geo definido. Não buscando profissionais próximos.");
-        setProfessionals([]);
-      }
-    } catch (e) {
-      console.error("Erro de rede ao buscar dados iniciais:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+        } else {
+          console.log("Cliente sem endereço/geo definido. Buscando profissionais em destaque geral...");
 
-  fetchData();
-  }, [user]);
+          try {
+            const featuredRes = await fetch(`${IP_DO_SERVIDOR}/prestadores/destaques`);
+            if (featuredRes.ok) {
+              const featJson = await featuredRes.json();
+              const featData = featJson.data || [];
+              setFeaturedProfessionals(Array.isArray(featData) ? featData : [featData]);
+            } else {
+              console.error("Falha ao buscar destaques:", featuredRes.status);
+              setFeaturedProfessionals([]);
+            }
+          } catch (e) {
+            console.error("Erro de rede ao buscar destaques:", e);
+            setFeaturedProfessionals([]);
+          }
+        }
+
+            } catch (e) {
+              console.error("Erro de rede ao buscar dados iniciais:", e);
+            } finally {
+              setLoading(false);
+            }
+          };
+
+          fetchData();
+          }, [user]);
 
   if (!user) return <ActivityIndicator size="large" color="#06437e" style={{ flex: 1, justifyContent: 'center' }} />;
 
@@ -289,11 +306,29 @@ useEffect(() => {
                 />
 
                 <Text style={styles.sectionTitle}>Profissionais em destaque</Text>
-                    {professionals.length > 0 ? ( professionals.map((prof, i) => (
-                    <ProfessionalCard key={prof.id || i} professional={prof} />))
-                    ) : (
-                    <Text style={styles.emptyMessage}>Complete seu endereço no perfil para ver profissionais próximos.</Text>
-                    )}
+
+                  {(professionals.length > 0 ? professionals : featuredProfessionals).length > 0 ? (
+                    (professionals.length > 0 ? professionals : featuredProfessionals).map((prof, i) => (
+                      <ProfessionalCard
+                        key={prof.id || i}
+                        professional={prof}
+                        onPress={() => {
+                          if (!user?.cep || !user?.numero) {
+                            // 👇 Se cadastro incompleto, manda para completar cadastro
+                            router.push('/completar_cadastro');
+                          } else {
+                            // 👇 Se cadastro completo, abre detalhes do prestador
+                            router.push({ pathname: '/detalhes_prestador', params: { id: prof.id } });
+                          }
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.emptyMessage}>
+                      Nenhum profissional disponível no momento.
+                    </Text>
+                  )}
+
             </>
         )}
       </ScrollView>
@@ -353,6 +388,7 @@ const styles = StyleSheet.create({
   marginTop: 10,
   marginBottom: 20,
   },
+  
 
 });
 // export default HomeCliente;
