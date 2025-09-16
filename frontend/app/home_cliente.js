@@ -32,7 +32,7 @@ const getIconForCategory = (categoryName) => {
         .replace(/[\u0300-\u036f]/g, "");
 
     switch (name) {
-        case 'eletrica':
+        case 'elétrica':
             return 'flash-outline';
         case 'encanamento':
             return 'water-outline';
@@ -101,17 +101,34 @@ const CategoryItem = ({ item, onPress }) => (
 );
 
 // --- ProfessionalCard ---
-const ProfessionalCard = ({ professional }) => (
-  <TouchableOpacity style={styles.professionalCard}>
+const ProfessionalCard = ({ professional, onPress }) => (
+  <TouchableOpacity style={styles.professionalCard} onPress={onPress}>
     <Image
       source={{ uri: professional.foto || "https://placehold.co/100x100/png?text=User" }}
       style={styles.professionalImage}
     />
     <View style={styles.professionalInfo}>
+      {/* Nome */}
       <Text style={styles.professionalName}>{professional.nome}</Text>
-      {professional.distancia_km && (
+
+      {/* Avaliações */}
+      {professional.media_avaliacao !== undefined && (
+        <Text style={styles.professionalStats}>
+          ⭐ {professional.media_avaliacao} ({professional.total_avaliacoes || 0} avaliações)
+        </Text>
+      )}
+
+      {/* Total de serviços */}
+      {professional.total_servicos !== undefined && (
+        <Text style={styles.professionalStats}>
+          ✅ {professional.total_servicos} serviços concluídos
+        </Text>
+      )}
+
+      {/* Distância (só aparece quando o cliente tem endereço/geo) */}
+      {professional.distancia_km !== undefined && professional.distancia_km !== null && (
         <Text style={styles.professionalDistance}>
-          {parseFloat(professional.distancia_km).toFixed(1)} km de distância
+          📍 {parseFloat(professional.distancia_km).toFixed(1)} km de distância
         </Text>
       )}
     </View>
@@ -338,31 +355,147 @@ useEffect(() => {
 
 // ===== Styles =====
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "transparent", paddingTop: 50 },
-  scrollView: { paddingHorizontal: 20 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 15, marginBottom: 10 },
-  logoContainer: { flex: 1, alignItems: "center" },
-  logo: { width: 150, height: 60 },
-  button: { padding: 5 },
-  headerProfileImage: { width: 34, height: 34, borderRadius: 17 },
-  welcomeText: { fontSize: 24, fontWeight: "600", color: "#06437e", marginBottom: 15 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#06437e", marginBottom: 15 },
-  searchContainer: { marginBottom: 20, zIndex: 10 },
-  searchBar: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 15, elevation: 2 },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, height: 50, fontSize: 16, color: "#333" },
-  suggestionsList: { position: "absolute", top: 55, left: 0, right: 0, backgroundColor: "white", borderRadius: 10, elevation: 3, maxHeight: 200, borderWidth: 1, borderColor: "#eee" },
-  suggestionItem: { padding: 12, fontSize: 16, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
-  categoriesList: { paddingBottom: 25 },
-  categoryItem: { alignItems: "center", marginRight: 15, width: 85 },
-  categoryIconContainer: { backgroundColor: "#fff", borderRadius: 25, width: 70, height: 70, justifyContent: "center", alignItems: "center", elevation: 2, marginBottom: 8 },
-  categoryText: { fontSize: 12, color: "#333", textAlign: "center" },
-  professionalCard: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 10, padding: 15, alignItems: "center", elevation: 2, marginBottom: 15 },
-  professionalImage: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
-  professionalInfo: { flex: 1, justifyContent: "center" },
-  professionalName: { fontSize: 16, fontWeight: "bold", color: "#06437e" },
-  professionalDistance: { fontSize: 12, color: "#888", marginTop: 5 },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 15 },
+  container: { 
+    flex: 1, 
+    backgroundColor: "transparent", 
+    paddingTop: 50 
+  },
+  scrollView: { 
+    paddingHorizontal: 20 
+  },
+  header: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    paddingHorizontal: 15, 
+    marginBottom: 10 
+  },
+  logoContainer: { 
+    flex: 1, 
+    alignItems: "center" 
+  },
+  logo: { 
+    width: 150, 
+    height: 60 
+  },
+  button: { 
+    padding: 5 
+  },
+  headerProfileImage: { 
+    width: 34, 
+    height: 34, 
+    borderRadius: 17 
+  },
+  welcomeText: { 
+    fontSize: 24, 
+    fontWeight: "600", 
+    color: "#06437e", 
+    marginBottom: 15 
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: "bold", 
+    color: "#06437e", 
+    marginBottom: 15 
+  },
+  searchContainer: { 
+    marginBottom: 20, 
+    zIndex: 10 
+  },
+  searchBar: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    backgroundColor: "#fff", 
+    borderRadius: 10, 
+    paddingHorizontal: 15, 
+    elevation: 2 
+  },
+  searchIcon: { 
+    marginRight: 10 
+  },
+  searchInput: { 
+    flex: 1, 
+    height: 50, 
+    fontSize: 16, 
+    color: "#333" 
+  },
+  suggestionsList: { 
+    position: "absolute", 
+    top: 55, left: 0, 
+    right: 0, 
+    backgroundColor: "white", 
+    borderRadius: 10, 
+    elevation: 3, 
+    maxHeight: 200, 
+    borderWidth: 1, 
+    borderColor: "#eee" 
+  },
+  suggestionItem: { 
+    padding: 12, 
+    fontSize: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#f0f0f0" 
+  },
+  categoriesList: { 
+    paddingBottom: 25 
+  },
+  categoryItem: { 
+    alignItems: "center", 
+    marginRight: 15, 
+    width: 85 },
+  categoryIconContainer: { 
+    backgroundColor: "#fff", 
+    borderRadius: 25, 
+    width: 70, 
+    height: 70, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    elevation: 2, 
+    marginBottom: 8 
+  },
+  categoryText: { 
+    fontSize: 12, 
+    color: "#333", 
+    textAlign: "center" 
+  },
+  professionalCard: { 
+    flexDirection: "row", 
+    backgroundColor: "#fff", 
+    borderRadius: 10, 
+    padding: 15, 
+    alignItems: "center", 
+    elevation: 2, 
+    marginBottom: 15 
+  },
+  professionalImage: { 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    marginRight: 15 
+  },
+  professionalInfo: { 
+    flex: 1, 
+    justifyContent: "center" 
+  },
+  professionalName: { 
+    fontSize: 16, 
+    fontWeight: "bold", 
+    color: "#06437e" 
+  },
+  professionalDistance: { 
+    fontSize: 12, 
+    color: "#888", 
+    marginTop: 5 
+  },
+  overlay: { 
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    backgroundColor: 'rgba(0,0,0,0.4)', 
+    zIndex: 15 
+  },
   lateralMenu: {
     position: "absolute",
     top: 0,
@@ -376,9 +509,21 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     transform: [{ translateX: -SCREEN_WIDTH }] // Inicia fora do ecrã
   },
-  closeButton: { padding: 15, alignItems: "flex-end", marginBottom: 10 },
-  menuItem: { paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: '#e0e0e0' },
-  menuText: { fontSize: 18, color: "#06437e", fontWeight: '500' 
+  closeButton: { 
+    padding: 15, 
+    alignItems: "flex-end", 
+    marginBottom: 10 
+  },
+  menuItem: { 
+    paddingVertical: 15, 
+    paddingHorizontal: 20, 
+    borderBottomWidth: 1, 
+    borderColor: '#e0e0e0' 
+  },
+  menuText: { 
+    fontSize: 18, 
+    color: "#06437e", 
+    fontWeight: '500' 
   },
   emptyMessage: {
   fontSize: 14,
@@ -388,6 +533,11 @@ const styles = StyleSheet.create({
   marginTop: 10,
   marginBottom: 20,
   },
+  professionalStats: {
+  fontSize: 13,
+  color: "#555",
+  marginTop: 2,
+},
   
 
 });

@@ -49,7 +49,42 @@ const prestadoresController = {
             res.status(result.status).json(result);
         }
     },
-    // --- Criar Novo Prestador ---
+
+    // --- Buscar prestadores em destaque ---
+    getFeatured: async (req, res) => {
+        try {
+            const result = await prestadoresRepository.getFeatured();
+            return res.status(result.status).json(result);
+        } catch (error) {
+            console.error("Erro no controller ao buscar prestadores em destaque:", error);
+            return res.status(500).json({
+            status: 500,
+            ok: false,
+            message: "Erro de servidor ao buscar destaques.",
+            });
+        }
+    },
+    // --- Buscar prestadores próximos ---
+    getProximos: async (req, res) => {
+        try {
+            const { clienteId, categoriaNome, tituloServico } = req.query;
+            const result = await prestadoresRepository.findProximos({
+            clienteId,
+            categoriaNome,
+            tituloServico,
+            });
+            return res.status(result.status).json(result);
+        } catch (error) {
+            console.error("Erro no controller ao buscar prestadores próximos:", error);
+            return res.status(500).json({
+            status: 500,
+            ok: false,
+            message: "Erro de servidor ao buscar prestadores próximos.",
+            });
+        }
+},
+
+        // --- Criar Novo Prestador ---
     createPrestadores: async (req, res) => {
         const { nome, cpf_cnpj, email, senha, cep, complemento, numero, foto, raioAtuacao, telefone, status_disponibilidade, latitude, longitude } = req.body;
 
@@ -197,35 +232,7 @@ const prestadoresController = {
         // ... (código sem alterações)
     },
 
-    // --- Encontrar Prestadores Próximos (Lógica Corrigida) ---
-    findProximos: async (req, res) => {
-        // A categoria e o título do serviço agora são opcionais
-        const { categoria, tituloServico, clienteId } = req.query;
 
-        if (!clienteId) {
-            return res.status(400).json({ message: 'O ID do cliente é obrigatório.' });
-        }
-
-        try {
-            // Monta o objeto de filtros para enviar ao repositório
-            const filtros = {
-                clienteId,
-                categoriaNome: categoria,
-                tituloServico: tituloServico
-            };
-            
-            const result = await prestadoresRepository.findProximos(filtros);
-            
-            if (result.ok) {
-                res.status(result.status).json(result.data);
-            } else {
-                res.status(result.status).json({ message: result.message });
-            }
-        } catch (error) {
-            console.error('Erro ao buscar prestadores próximos:', error);
-            res.status(500).json({ message: 'Erro interno do servidor.' });
-        }
-    },
 };
 
 export default prestadoresController;

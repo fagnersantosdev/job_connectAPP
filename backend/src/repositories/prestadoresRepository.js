@@ -228,70 +228,120 @@ const prestadoresRepository = {
     // --- Método para Encontrar Prestadores Próximos (Query Corrigida) ---
     // --- Método para Encontrar Prestadores Próximos (Query Dinâmica) ---
     findProximos: async (filtros) => {
-        const { clienteId, categoriaNome, tituloServico } = filtros;
+    const { clienteId, categoriaNome, tituloServico } = filtros;
+
+    try {
+        const clienteResult = await conexao.oneOrNone(
+        'SELECT latitude, longitude FROM clientes WHERE id = $1',
+        [clienteId]
+        );
+        if (!clienteResult) {
+        return { status: 404, ok: false, message: 'Cliente não encontrado.' };
+        }
+        const { latitude: clienteLat, longitude: clienteLon } = clienteResult;
+
+        let params = [clienteLat, clienteLon];
+        let query = `
+        SELECT DISTINCT ON (p.id)
+            p.id,
+            p.nome,
+            p.foto,
+            (
+            6371 * acos(
+                cos(radians($1)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($2)) +
+                sin(radians($1)) * sin(radians(p.latitude))
+            )
+            ) AS distancia_km,
+            COALESCE(ROUND(AVG(a.nota), 2), 0) AS media_avaliacao,
+            COUNT(DISTINCT a.id) AS total_avaliacoes,
+            COUNT(DISTINCT CASE WHEN s.status = 'concluido' THEN s.id END) AS total_servicos
+        FROM prestadores p
+        LEFT JOIN avaliacoes a
+            ON a.prestador_id = p.id
+        LEFT JOIN solicitacoes_servico s
+            ON s.prestador_id_aceito = p.id
+        INNER JOIN servicos_oferecidos so
+            ON so.prestador_id = p.id
+        INNER JOIN categorias_servico cs
+            ON so.categoria_id = cs.id
+        `;
+
+        let whereConditions = [`p.status_disponibilidade = 'online'`];
+
+        if (categoriaNome) {
+        params.push(categoriaNome);
+        whereConditions.push(`cs.nome = $${params.length}`);
+        }
+
+        if (tituloServico) {
+        params.push(tituloServico);
+        whereConditions.push(`so.titulo = $${params.length}`);
+        }
+
+        if (whereConditions.length > 0) {
+        query += ` WHERE ${whereConditions.join(' AND ')}`;
+        }
+
+        query += `
+        GROUP BY p.id, p.nome, p.foto, p.latitude, p.longitude
+        ORDER BY p.id, distancia_km
+        LIMIT 10;
+        `;
+
+        const prestadores = await conexao.any(query, params);
+        return { status: 200, ok: true, data: prestadores };
+
+    } catch (error) {
+        console.error('Erro no repositório ao buscar prestadores próximos:', error);
+        return { status: 500, ok: false, message: 'Erro interno do servidor.' };
+    }
+},
+
+    // --- Obter Prestadores em Destaque (melhor avaliados e mais serviços concluídos) ---
+    getFeatured: async () => {
+    const sql = `
+        SELECT
+            p.id,
+            p.nome,
+            p.foto,
+            COALESCE(ROUND(AVG(a.nota), 2), 0) AS media_avaliacao,
+            COUNT(DISTINCT a.id)                AS total_avaliacoes,
+            COUNT(DISTINCT CASE WHEN s.status = 'concluido' THEN s.id END) AS total_servicos,
+            p.data_cadastro
+        FROM prestadores p
+        LEFT JOIN avaliacoes a
+            ON a.prestador_id = p.id
+        LEFT JOIN solicitacoes_servico s
+            ON s.prestador_id_aceito = p.id
+        GROUP BY p.id, p.nome, p.foto, p.data_cadastro
+        ORDER BY media_avaliacao DESC, total_avaliacoes DESC, total_servicos DESC, p.data_cadastro DESC
+        LIMIT 10;
+    `;
 
         try {
-            const clienteResult = await conexao.oneOrNone('SELECT latitude, longitude FROM clientes WHERE id = $1', [clienteId]);
-            if (!clienteResult) {
-                return { status: 404, ok: false, message: 'Cliente não encontrado.' };
-            }
-            const { latitude: clienteLat, longitude: clienteLon } = clienteResult;
+            const destaques = await conexao.any(sql);
 
-            // Inicia a construção da query e dos parâmetros
-            let params = [clienteLat, clienteLon];
-            // A cláusula DISTINCT garante que cada prestador apareça apenas uma vez,
-            // mesmo que ofereça múltiplos serviços que correspondam à busca.
-            let query = `
-                SELECT DISTINCT ON (p.id)
-                    p.id, 
-                    p.nome, 
-                    p.foto,
-                    (
-                        6371 * acos(
-                            cos(radians($1)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians($2)) + 
-                            sin(radians($1)) * sin(radians(p.latitude))
-                        )
-                    ) AS distancia_km
-                FROM 
-                    prestadores p
-                INNER JOIN 
-                    servicos_oferecidos so ON p.id = so.prestador_id
-                INNER JOIN 
-                    categorias_servico cs ON so.categoria_id = cs.id
-            `;
-            
-            let whereConditions = [`p.status_disponibilidade = 'online'`];
-
-            // Adiciona o filtro de categoria se ele for fornecido
-            if (categoriaNome) {
-                params.push(categoriaNome);
-                whereConditions.push(`cs.nome = $${params.length}`);
+            // fallback em ambiente de desenvolvimento
+            if (!destaques || destaques.length === 0) {
+                return {
+                    status: 200,
+                    ok: true,
+                    data: [
+                        { id: 1, nome: "João Eletricista", foto: null, media_avaliacao: 4.8, total_servicos: 12 },
+                        { id: 2, nome: "Maria Encanadora", foto: null, media_avaliacao: 4.6, total_servicos: 9 },
+                        { id: 3, nome: "Carlos Pintor", foto: null, media_avaliacao: 4.5, total_servicos: 7 }
+                    ]
+                };
             }
 
-            // Adiciona o filtro por título do serviço se ele for fornecido
-            if (tituloServico) {
-                params.push(tituloServico);
-                whereConditions.push(`so.titulo = $${params.length}`);
-            }
-            
-            if (whereConditions.length > 0) {
-                query += ` WHERE ${whereConditions.join(' AND ')}`;
-            }
-
-            query += `
-                ORDER BY 
-                    p.id, distancia_km
-                LIMIT 10;
-            `;
-
-            const prestadores = await conexao.any(query, params);
-            return { status: 200, ok: true, data: prestadores };
+            return { status: 200, ok: true, data: destaques };
 
         } catch (error) {
-            console.error('Erro no repositório ao buscar prestadores próximos:', error);
-            return { status: 500, ok: false, message: 'Erro interno do servidor.' };
+            console.error("Erro ao buscar prestadores em destaque:", error);
+            return { status: 500, ok: false, message: "Erro de servidor ao buscar destaques." };
         }
     },
+
 };
 
 export default prestadoresRepository;
