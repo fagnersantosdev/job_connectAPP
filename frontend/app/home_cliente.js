@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   logo: { 
     width: 150, 
-    height: 60 
+    height: 100 
   },
   button: { 
     padding: 5 
