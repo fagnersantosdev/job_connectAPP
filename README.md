@@ -11,10 +11,10 @@ O app centraliza essa busca, permitindo que:
 - **Clientes:** Encontrem especialistas, comparem perfis e entrem em contato diretamente.
 
 ## 🛠️ Tecnologias Utilizadas
-- **Linguagem:** TypeScript
-- **Framework:** React Native / Expo (ou Next.js, dependendo da sua escolha técnica)
-- **Estilização:** Tailwind CSS / NativeWind
-- **Backend:** Node.js com Prisma (integrado ao ecossistema do seu portfólio)
+- **Framework:** React Native com Expo
+- **Navegação:** Expo Router (File-based routing)
+- **Estado Global:** Context API
+- **Linguagem:** JavaScript (ES6+)
 
 ## 🏗️ Funcionalidades Planejadas / Em Desenvolvimento
 - [ ] Cadastro diferenciado (Prestador vs Cliente)
